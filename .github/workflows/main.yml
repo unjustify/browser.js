@@ -80,7 +80,7 @@ jobs:
         with:
           path: |
             packages/scramjet/packages/core/rewriter/wasm/out
-            packages/scramjet/packages/core/dist/scramjet.wasm.wasm
+            packages/scramjet/packages/core/dist/scramjet.wasm
           key: rewriter-release-${{ hashFiles('packages/scramjet/packages/core/rewriter/**/Cargo.toml', 'packages/scramjet/packages/core/rewriter/**/*.rs', 'packages/scramjet/packages/core/rewriter/**/src/**/*.toml', 'packages/scramjet/packages/core/rewriter/**/src/**/*.json', 'packages/scramjet/packages/core/rewriter/**/src/**/*.md', 'packages/scramjet/packages/core/rewriter/**/*.sh') }}
           restore-keys: |
             rewriter-release-
@@ -203,7 +203,7 @@ jobs:
         with:
           path: |
             packages/scramjet/packages/core/rewriter/wasm/out
-            packages/scramjet/packages/core/dist/scramjet.wasm.wasm
+            packages/scramjet/packages/core/dist/scramjet.wasm
           key: rewriter-release-${{ hashFiles('packages/scramjet/packages/core/rewriter/**/Cargo.toml', 'packages/scramjet/packages/core/rewriter/**/*.rs', 'packages/scramjet/packages/core/rewriter/**/src/**/*.toml', 'packages/scramjet/packages/core/rewriter/**/src/**/*.json', 'packages/scramjet/packages/core/rewriter/**/src/**/*.md', 'packages/scramjet/packages/core/rewriter/**/*.sh') }}
 
       - name: Get artifacts (scramjet/controller)
@@ -255,7 +255,7 @@ jobs:
         with:
           path: |
             packages/scramjet/packages/core/rewriter/wasm/out
-            packages/scramjet/packages/core/dist/scramjet.wasm.wasm
+            packages/scramjet/packages/core/dist/scramjet.wasm
           key: rewriter-release-${{ hashFiles('packages/scramjet/packages/core/rewriter/**/Cargo.toml', 'packages/scramjet/packages/core/rewriter/**/*.rs', 'packages/scramjet/packages/core/rewriter/**/src/**/*.toml', 'packages/scramjet/packages/core/rewriter/**/src/**/*.json', 'packages/scramjet/packages/core/rewriter/**/src/**/*.md', 'packages/scramjet/packages/core/rewriter/**/*.sh') }}
           restore-keys: |
             rewriter-release-

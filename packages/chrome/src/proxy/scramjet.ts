@@ -17,7 +17,7 @@ import type {
 } from "@mercuryworkshop/proxy-transports";
 import { RpcHelper } from "@mercuryworkshop/rpc";
 
-import scramjetWASM from "../../../scramjet/packages/core/dist/scramjet.wasm.wasm?url";
+import scramjetWASM from "../../../scramjet/packages/core/dist/scramjet.wasm?url";
 import injectScript from "../../../inject/dist/inject.js?url";
 
 import { browser } from "../Browser";

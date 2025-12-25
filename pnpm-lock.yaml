@@ -346,18 +346,32 @@ importers:
       tar:
         specifier: ^7.5.1
         version: 7.5.1
+    devDependencies:
+      '@mercuryworkshop/epoxy-transport':
+        specifier: 'catalog:'
+        version: 3.0.0
+      '@mercuryworkshop/libcurl-transport':
+        specifier: 'catalog:'
+        version: 2.0.4
+      '@mercuryworkshop/proxy-transports':
+        specifier: 'catalog:'
+        version: 1.0.2
+      '@mercuryworkshop/scramjet-controller':
+        specifier: workspace:*
+        version: link:../controller
 
   packages/scramjet/packages/controller:
     dependencies:
       '@mercuryworkshop/proxy-transports':
         specifier: 'catalog:'
         version: 1.0.2
-      '@mercuryworkshop/rpc':
-        specifier: workspace:*
-        version: link:../rpc
       '@mercuryworkshop/scramjet':
         specifier: workspace:*
         version: link:../core
+    devDependencies:
+      '@mercuryworkshop/rpc':
+        specifier: workspace:*
+        version: link:../rpc
 
   packages/scramjet/packages/core:
     dependencies:

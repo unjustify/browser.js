@@ -96,7 +96,6 @@ class ProxyFrameContext {
 			{
 				load: async ({ url, sequence }) => {
 					this.windowproxy = reduceSequence(sequence);
-					console.log("WP" + id, this.windowproxy);
 					tab =
 						browser.tabs.find(
 							(t) => t.frame.frame.contentWindow === this.windowproxy

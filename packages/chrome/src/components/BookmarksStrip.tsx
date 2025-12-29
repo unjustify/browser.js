@@ -19,7 +19,6 @@ export function BookmarksStrip(props: {}, cx: ComponentContext) {
 			},
 		]);
 	};
-	console.log(browser.bookmarks);
 	return (
 		<div>
 			{use(browser.bookmarks).mapEach((b) => (

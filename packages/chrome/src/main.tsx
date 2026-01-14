@@ -1,5 +1,6 @@
 import "./reset.css";
 import "./style.css";
+import type { FC } from "dreamland/core";
 
 // temp fix for vite not working
 import.meta.hot?.accept(() => location.reload());
@@ -46,12 +47,13 @@ if (import.meta.env.VITE_PUTER_BRANDING) {
 
 export const isPuter =
 	import.meta.env.VITE_PUTER_BRANDING && puter.env == "app";
+export const puterBranding = import.meta.env.VITE_PUTER_BRANDING;
 
-export function LoadInterstitial(s: { status: string }) {
+export function LoadInterstitial(this: FC<{ status: string }>) {
 	return (
 		<dialog class="signin">
 			<h1>Loading</h1>
-			<p>{use(s.status)}</p>
+			<p>{use(this.status)}</p>
 		</dialog>
 	);
 }
@@ -111,3 +113,7 @@ export async function mount(): Promise<HTMLElement> {
 		throw e;
 	}
 }
+
+mount().then((r) => {
+	document.querySelector("#app")!.replaceWith(r);
+});

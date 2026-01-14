@@ -1,5 +1,5 @@
-import { css } from "dreamland/core";
-import type { Tab } from "../Tab";
+import { css, type FC } from "dreamland/core";
+import { type Tab } from "../Tab";
 import { splitUrl } from "../utils";
 
 import { iconClose, iconTrash, iconSettings } from "../icons";
@@ -8,12 +8,12 @@ import { Button } from "./Button";
 
 import { closeMenu } from "./Menu";
 
-export function SiteInformationPopup(s: { tab: Tab }) {
+export function SiteInformationPopup(this: FC<{ tab: Tab }>) {
 	return (
 		<div>
 			<div class="header">
 				<span>
-					{use(s.tab.url).map((u) => splitUrl(u)[0] + splitUrl(u)[1])}
+					{use(this.tab.url).map((u) => splitUrl(u)[0] + splitUrl(u)[1])}
 				</span>
 				<div class="buttoniconscontainer">
 					<Button

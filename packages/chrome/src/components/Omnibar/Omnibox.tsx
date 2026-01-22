@@ -100,8 +100,6 @@ export function Omnibox(
 		}, 10);
 	});
 
-	let timeout: number | null = null;
-
 	use(this.realvalue).listen(() => {
 		if (!this.realvalue) {
 			this.searchSuggestions = [];
@@ -111,70 +109,65 @@ export function Omnibox(
 		// if the user is actually trying to search something we can kill the trending suggestions
 		this.trendingSuggestions = [];
 
-		if (timeout) clearTimeout(timeout);
-		timeout = setTimeout(() => {
-			fetchSuggestions(this.realvalue, this.suggestionDenied, (results) => {
-				this.searchSuggestions = results;
+		fetchSuggestions(this.realvalue, this.suggestionDenied, (results) => {
+			this.searchSuggestions = results;
 
-				const firstResult = results[0];
-				if (!firstResult) return;
-				if (firstResult.kind === "search") {
-					if (!firstResult.title) return;
-					if (this.realvalue.length >= firstResult.title.length) return;
-					if (
-						!firstResult.title
-							.toLowerCase()
-							.startsWith(this.realvalue.toLowerCase())
-					)
-						return;
+			const firstResult = results[0];
+			if (!firstResult) return;
+			if (firstResult.kind === "search") {
+				if (!firstResult.title) return;
+				if (this.realvalue.length >= firstResult.title.length) return;
+				if (
+					!firstResult.title
+						.toLowerCase()
+						.startsWith(this.realvalue.toLowerCase())
+				)
+					return;
 
-					let currentCursor = this.input.selectionStart || 0;
+				let currentCursor = this.input.selectionStart || 0;
 
-					this.input.setSelectionRange(
-						currentCursor,
-						currentCursor + firstResult.title.length
-					);
-					this.value = firstResult.title;
-					this.input.setSelectionRange(
-						currentCursor,
-						currentCursor + firstResult.title.length
-					);
-				} else {
-					if (!firstResult.url) return;
+				this.input.setSelectionRange(
+					currentCursor,
+					currentCursor + firstResult.title.length
+				);
+				this.value = firstResult.title;
+				this.input.setSelectionRange(
+					currentCursor,
+					currentCursor + firstResult.title.length
+				);
+			} else {
+				if (!firstResult.url) return;
 
-					// todo support http:example.com
-					let normalizedUrl =
-						this.realvalue.startsWith("http://") ||
-						this.realvalue.startsWith("https://")
-							? firstResult.url.href
-							: trimUrl(firstResult.url);
+				// todo support http:example.com
+				let normalizedUrl =
+					this.realvalue.startsWith("http://") ||
+					this.realvalue.startsWith("https://")
+						? firstResult.url.href
+						: trimUrl(firstResult.url);
 
-					if (normalizedUrl.endsWith("/") && !this.realvalue.endsWith("/")) {
-						normalizedUrl = normalizedUrl.slice(0, -1);
-					}
-					if (this.realvalue.length >= normalizedUrl.length) return;
-					if (
-						!normalizedUrl
-							.toLowerCase()
-							.startsWith(this.realvalue.toLowerCase())
-					)
-						return;
-
-					let currentCursor = this.input.selectionStart || 0;
-
-					this.input.setSelectionRange(
-						currentCursor,
-						currentCursor + normalizedUrl.length
-					);
-					this.value = normalizedUrl;
-					this.input.setSelectionRange(
-						currentCursor,
-						currentCursor + normalizedUrl.length
-					);
+				if (normalizedUrl.endsWith("/") && !this.realvalue.endsWith("/")) {
+					normalizedUrl = normalizedUrl.slice(0, -1);
 				}
-			});
-			this.suggestionDenied = false;
-		}, 100);
+				if (this.realvalue.length >= normalizedUrl.length) return;
+				if (
+					!normalizedUrl.toLowerCase().startsWith(this.realvalue.toLowerCase())
+				)
+					return;
+
+				let currentCursor = this.input.selectionStart || 0;
+
+				this.input.setSelectionRange(
+					currentCursor,
+					currentCursor + normalizedUrl.length
+				);
+				this.value = normalizedUrl;
+				this.input.setSelectionRange(
+					currentCursor,
+					currentCursor + normalizedUrl.length
+				);
+			}
+		});
+		this.suggestionDenied = false;
 	});
 
 	use(this.url.href).listen((url) => {

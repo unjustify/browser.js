@@ -283,6 +283,11 @@ const fetchGoogleSuggestions = async (
 	}
 };
 
+let timeout: number | null = null;
+let lastStartedTimestamp: number | null = null;
+let currentQuery: string;
+
+let historyResults: OmniboxResult[];
 export async function fetchSuggestions(
 	query: string,
 	suggestionDenied: boolean,
@@ -293,8 +298,9 @@ export async function fetchSuggestions(
 
 		return;
 	}
+	currentQuery = query;
 
-	const historyResults = fetchHistoryResults(query);
+	historyResults = fetchHistoryResults(query);
 
 	let combinedResults: OmniboxResult[] = [
 		...historyResults,
@@ -306,14 +312,29 @@ export async function fetchSuggestions(
 	// first update, so the user sees something quickly
 	setResults(rankResults(combinedResults, query, suggestionDenied));
 
-	const googleResults = await fetchGoogleSuggestions(query);
+	// these are expensive, so debounce 100ms
+	let started = Date.now();
+	if (timeout) clearTimeout(timeout);
+	timeout = setTimeout(async () => {
+		const googleResults = await fetchGoogleSuggestions(query);
+		// sometimes, an old request will respond after a fresher request gets a response
+		// if that happens, instantly discard the data
+		if (lastStartedTimestamp && lastStartedTimestamp > started) {
+			return;
+		}
+		lastStartedTimestamp = started;
 
-	combinedResults = [...historyResults, ...googleResults];
-	addDirectResult(query, combinedResults);
+		// note thast historyResults may have changed in between
+		combinedResults = [...historyResults, ...googleResults];
+		// query might have also changed, so use the global one
+		addDirectResult(currentQuery, combinedResults);
 
-	// update with the new google results
-	setResults(rankResults(combinedResults, query, suggestionDenied));
-	cachedGoogleResults = googleResults;
+		// update with the new google results
+		setResults(rankResults(combinedResults, currentQuery, suggestionDenied));
+		cachedGoogleResults = googleResults;
+
+		timeout = null;
+	}, 100);
 }
 
 export type TrendingQuery = {

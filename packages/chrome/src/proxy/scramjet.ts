@@ -77,7 +77,7 @@ function findSequence(
 	}
 }
 
-function reduceSequence(sequence: FrameSequence): Window | null {
+export function reduceSequence(sequence: FrameSequence): Window | null {
 	return sequence.reduce<Window | null>((win, idx) => {
 		if (!win) return null;
 		return win.frames[idx];
@@ -154,7 +154,20 @@ class ProxyFrameContext {
 					}
 				},
 				newtab: async ({ url }) => {
-					browser.newTab(new URL(url));
+					const tab = browser.newTab(new URL(url));
+					await tab.waitForInit;
+					const seq = findSequence(
+						top!,
+						tab.frame.frame.contentWindow as Window
+					);
+					if (!seq) throw new Error("No sequence found for new tab");
+
+					return [
+						{
+							sequence: seq,
+						},
+						[],
+					];
 				},
 			},
 			id,

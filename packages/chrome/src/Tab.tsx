@@ -44,7 +44,8 @@ export class Tab extends StatefulClass {
 
 	sendToChobitsu: ((message: string) => void) | null = null;
 	onChobitsuMessage: ((message: string) => void) | null = null;
-	waitForChobitsuInit: Promise<void>;
+	waitForInit: Promise<void>;
+	private initResolve!: () => void;
 
 	constructor(
 		public url: URL = new URL("puter://newtab"),
@@ -63,9 +64,8 @@ export class Tab extends StatefulClass {
 
 		this.icon = null;
 
-		let resolver: () => void;
-		this.waitForChobitsuInit = new Promise((resolve) => {
-			resolver = resolve;
+		this.waitForInit = new Promise((resolve) => {
+			this.initResolve = resolve;
 		});
 
 		// addHistoryListeners(frame, this);
@@ -196,6 +196,7 @@ export class Tab extends StatefulClass {
 	}
 
 	initialLoad() {
+		this.initResolve();
 		this.internalpage = null;
 	}
 

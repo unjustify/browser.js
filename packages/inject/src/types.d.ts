@@ -39,6 +39,9 @@ export type Chromebound = {
 		{
 			url: string;
 		},
+		{
+			sequence: FrameSequence;
+		},
 	];
 	history_pushState: [
 		{

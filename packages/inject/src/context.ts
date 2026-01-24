@@ -20,6 +20,7 @@ import { setupContextMenu } from "./emulators/contextmenu";
 import { setupHistoryEmulation } from "./emulators/history";
 import { setupTitleWatcher } from "./emulators/titlewatcher";
 import { setupAnchorHandler } from "./emulators/anchors";
+import { setupWindowOpen } from "./emulators/windowopen";
 
 function findSequence(
 	top: Window,
@@ -102,6 +103,7 @@ export class ExecutionContextWrapper {
 		setupContextMenu(this);
 		setupHistoryEmulation(this);
 		setupAnchorHandler(this);
+		setupWindowOpen(this);
 		// inform	chrome of the current url
 		// will happen if you get redirected/click on a link, etc, the chrome will have no idea otherwise
 

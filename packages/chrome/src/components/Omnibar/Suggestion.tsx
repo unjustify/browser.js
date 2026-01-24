@@ -1,6 +1,14 @@
 import { css, type FC } from "dreamland/core";
 import { type OmniboxResult, AVAILABLE_SEARCH_ENGINES } from "./suggestions";
-import { iconSearch, iconTrendingUp } from "../../icons";
+import {
+	iconSearch,
+	iconTrendingUp,
+	iconGlobe,
+	iconDesktop,
+	iconAbout,
+	iconLink,
+	iconCloud,
+} from "../../icons";
 import { browser } from "../../Browser";
 import { Icon } from "../Icon";
 import { Favicon } from "../Favicon";
@@ -43,6 +51,20 @@ export function Suggestion(
 					<Icon icon={iconSearch}></Icon>
 				) : item.kind === "trending" ? (
 					<Icon icon={iconTrendingUp}></Icon>
+				) : item.kind === "direct" && item.directUrlType ? (
+					item.directUrlType === "domain" ? (
+						<Icon icon={iconGlobe}></Icon>
+					) : item.directUrlType === "ip" ? (
+						<Icon icon={iconDesktop}></Icon>
+					) : item.directUrlType === "puter" ? (
+						<Icon icon={iconCloud}></Icon>
+					) : item.directUrlType === "about" ? (
+						<Icon icon={iconAbout}></Icon>
+					) : item.directUrlType === "protocol" ? (
+						<Icon icon={iconLink}></Icon>
+					) : (
+						<Favicon url={item.favicon}></Favicon>
+					)
 				) : (
 					<Favicon url={item.favicon}></Favicon>
 				)}
@@ -127,7 +149,7 @@ Suggestion.style = css`
 	.url,
 	.description {
 		text-overflow: ellipsis;
-		text-wrap: nowrap;
+		white-space: nowrap;
 		word-wrap: nowrap;
 		overflow: hidden;
 		line-height: 1.2;

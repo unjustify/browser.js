@@ -61,3 +61,8 @@ export { default as iconPrivacy } from "@ktibow/iconset-ion/shield-checkmark-out
 
 export { default as iconError } from "@ktibow/iconset-ion/alert-circle-outline";
 export { default as iconCheckmark } from "@ktibow/iconset-ion/checkmark-circle-outline";
+
+export { default as iconGlobe } from "@ktibow/iconset-ion/globe-outline";
+export { default as iconServer } from "@ktibow/iconset-ion/server-outline";
+export { default as iconDesktop } from "@ktibow/iconset-ion/desktop-outline";
+export { default as iconCloud } from "@ktibow/iconset-ion/cloud-outline";

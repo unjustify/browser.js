@@ -15,6 +15,7 @@ export type OmniboxResult = {
 	url: URL;
 	favicon: string | null;
 	relevanceScore?: number;
+	directUrlType?: "domain" | "ip" | "puter" | "about" | "protocol";
 };
 
 export interface SearchEngine {
@@ -204,8 +205,26 @@ const fetchHistoryResults = (query: string): OmniboxResult[] => {
 
 const addDirectResult = (query: string, results: OmniboxResult[]) => {
 	let directurl;
+	let directurltype: OmniboxResult["directUrlType"];
 	if (URL.canParse(query)) {
 		directurl = new URL(query);
+		if (directurl.hostname === "") {
+			// no hostname, so it's a direct schema url
+			if (directurl.protocol === "puter:") {
+				directurltype = "puter";
+			} else if (directurl.protocol === "about:") {
+				directurltype = "about";
+			} else {
+				directurltype = "protocol";
+			}
+		} else {
+			let parsed = tldts.parse(directurl.hostname);
+			if (parsed.isIp) {
+				directurltype = "ip";
+			} else {
+				directurltype = "domain";
+			}
+		}
 	} else {
 		let parsed = tldts.parse(query);
 		if ((parsed.domain && parsed.isIcann) || parsed.isIp) {
@@ -213,6 +232,11 @@ const addDirectResult = (query: string, results: OmniboxResult[]) => {
 			// i think typing in `://a.com` would break it because it's an invalid url but passes tldts
 			// but tldts doesn't parse path/port/schema so we can't use its parser
 			directurl = new URL("https://" + query);
+			if (parsed.isIp) {
+				directurltype = "ip";
+			} else {
+				directurltype = "domain";
+			}
 		}
 	}
 
@@ -220,6 +244,7 @@ const addDirectResult = (query: string, results: OmniboxResult[]) => {
 		results.unshift({
 			kind: "direct",
 			url: directurl,
+			directUrlType: directurltype,
 			title: null,
 			favicon: null,
 		});

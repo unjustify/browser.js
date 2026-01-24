@@ -1,9 +1,9 @@
 import { css, type FC, type Stateful } from "dreamland/core";
-import { Icon } from "./Icon";
+import { Icon } from "@components/Icon";
 import { browser, type BookmarkEntry } from "../Browser";
-import { Input } from "./Input";
-import { closeMenu } from "./Menu";
-import { Button } from "./Button";
+import { Input } from "@components/Input";
+import { closeMenu } from "@components/Menu";
+import { Button } from "@components/Button";
 
 export function BookmarkPopup(
 	this: FC<{

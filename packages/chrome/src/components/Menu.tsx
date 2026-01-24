@@ -6,12 +6,12 @@ import {
 	type DLElement,
 } from "dreamland/core";
 import { browser } from "../Browser";
-import { Checkbox } from "./Checkbox";
-import { Icon } from "./Icon";
+import { Checkbox } from "@components/Checkbox";
+import { Icon } from "@components/Icon";
 import type { IconifyIcon } from "@iconify/types";
 import { emToPx } from "../utils";
 import { isPuter } from "../main";
-import { requestUnfocusFrames } from "./Shell";
+import { requestUnfocusFrames } from "@components/Shell";
 
 export const closeMenu = createDelegate<void>();
 

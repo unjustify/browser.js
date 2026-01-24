@@ -1,10 +1,14 @@
 import { css, type FC } from "dreamland/core";
 import type { Tab } from "../../Tab";
-import { setContextMenu } from "../Menu";
+import { setContextMenu } from "@components/Menu";
 import { iconClose, iconDuplicate, iconNew, iconRefresh } from "../../icons";
 import { browser, forceScreenshot } from "../../Browser";
-import { Icon } from "../Icon";
-import { activeTooltips, fastClose, TabTooltip } from "./TabTooltip";
+import { Icon } from "@components/Icon";
+import {
+	activeTooltips,
+	fastClose,
+	TabTooltip,
+} from "@components/TabStrip/TabTooltip";
 
 export function DragTab(
 	this: FC<

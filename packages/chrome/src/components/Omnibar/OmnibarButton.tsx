@@ -1,6 +1,6 @@
 import type { IconifyIcon } from "@iconify/types";
 import { css, type FC } from "dreamland/core";
-import { Icon } from "../Icon";
+import { Icon } from "@components/Icon";
 
 export function OmnibarButton(
 	this: FC<{

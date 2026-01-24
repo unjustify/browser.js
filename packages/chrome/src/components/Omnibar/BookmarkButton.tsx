@@ -1,12 +1,12 @@
 import { createState, css, type FC } from "dreamland/core";
-import { OmnibarButton } from "./OmnibarButton";
+import { OmnibarButton } from "@components/Omnibar/OmnibarButton";
 import { browser } from "../../Browser";
-import { createMenuCustom } from "../Menu";
-import { BookmarkPopup } from "../BookmarkPopup";
+import { createMenuCustom } from "@components/Menu";
+import { BookmarkPopup } from "@components/BookmarkPopup";
 import { emToPx } from "../../utils";
 
 import { iconStar, iconStarFilled } from "../../icons";
-import { Icon } from "../Icon";
+import { Icon } from "@components/Icon";
 
 export function BookmarkButton(this: FC<{ url: URL }>) {
 	return (

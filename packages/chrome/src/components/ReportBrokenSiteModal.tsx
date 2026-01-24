@@ -1,10 +1,10 @@
 import { css, type FC } from "dreamland/core";
-import { Button } from "./Button";
-import { Icon } from "./Icon";
+import { Button } from "@components/Button";
+import { Icon } from "@components/Icon";
 import { iconClose, iconError, iconCheckmark } from "../icons";
 import { browser } from "../Browser";
 import { versionInfo } from "@mercuryworkshop/scramjet";
-import { Input } from "./Input";
+import { Input } from "@components/Input";
 
 export function ReportBrokenSiteModal(
 	this: FC<

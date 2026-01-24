@@ -1,11 +1,11 @@
 import { css, type FC } from "dreamland/core";
 import type { Tab } from "../Tab";
 import { browser } from "../Browser";
-import { trimUrl } from "../components/Omnibar/utils";
-import { createMenu } from "../components/Menu";
-import { Icon } from "../components/Icon";
+import { trimUrl } from "@components/Omnibar/utils";
+import { createMenu } from "@components/Menu";
+import { Icon } from "@components/Icon";
 import { iconLink, iconOpen, iconSearch } from "../icons";
-import { Favicon } from "../components/Favicon";
+import { Favicon } from "@components/Favicon";
 
 export function NewTabPage(this: FC<{ tab: Tab }>) {
 	return (

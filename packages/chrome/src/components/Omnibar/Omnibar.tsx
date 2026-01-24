@@ -13,19 +13,19 @@ import {
 	iconSettings,
 	iconError,
 } from "../../icons";
-import { createMenu, createMenuCustom } from "../Menu";
-import { OmnibarButton } from "./OmnibarButton";
+import { createMenu, createMenuCustom } from "@components/Menu";
+import { OmnibarButton } from "@components/Omnibar/OmnibarButton";
 import type { Tab } from "../../Tab";
-import { Omnibox } from "./Omnibox";
+import { Omnibox } from "@components/Omnibar/Omnibox";
 import { browser } from "../../Browser";
-import { Icon } from "../Icon";
+import { Icon } from "@components/Icon";
 import { defaultFaviconUrl } from "../../assets/favicon";
 
 import type { HistoryState } from "../../History";
 import { isPuter, puterBranding } from "../../main";
-import { DownloadsPopup } from "../DownloadsPopup";
-import { CircularProgress } from "./CircularProgress";
-import { ReportBrokenSiteModal } from "../ReportBrokenSiteModal";
+import { DownloadsPopup } from "@components/DownloadsPopup";
+import { CircularProgress } from "@components/Omnibar/CircularProgress";
+import { ReportBrokenSiteModal } from "@components/ReportBrokenSiteModal";
 
 export const animateDownloadFly = createDelegate<void>();
 export const showDownloadsPopup = createDelegate<void>();

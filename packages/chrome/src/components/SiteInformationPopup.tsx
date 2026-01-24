@@ -3,10 +3,10 @@ import { type Tab } from "../Tab";
 import { splitUrl } from "../utils";
 
 import { iconClose, iconTrash, iconSettings } from "../icons";
-import { Icon } from "./Icon";
-import { Button } from "./Button";
+import { Icon } from "@components/Icon";
+import { Button } from "@components/Button";
 
-import { closeMenu } from "./Menu";
+import { closeMenu } from "@components/Menu";
 
 export function SiteInformationPopup(this: FC<{ tab: Tab }>) {
 	return (

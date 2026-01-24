@@ -4,15 +4,15 @@ import { Tab, type SerializedTab } from "./Tab";
 import { createDelegate } from "dreamland/core";
 import type { SerializedHistoryState } from "./History";
 import { HistoryState } from "./History";
-import { focusOmnibox } from "./components/Omnibar/Omnibox";
-import { type AVAILABLE_SEARCH_ENGINES } from "./components/Omnibar/suggestions";
+import { focusOmnibox } from "@components/Omnibar/Omnibox";
+import { type AVAILABLE_SEARCH_ENGINES } from "@components/Omnibar/suggestions";
 
 import * as tldts from "tldts";
 import { isPuter } from "./main";
 import {
 	animateDownloadFly,
 	showDownloadsPopup,
-} from "./components/Omnibar/Omnibar";
+} from "@components/Omnibar/Omnibar";
 import type { RawDownload } from "./proxy/fetch";
 import { CookieJar } from "@mercuryworkshop/scramjet/bundled";
 import { getSerializedBrowserState, markDirty } from "./storage";

@@ -1,7 +1,7 @@
 import { css, type FC } from "dreamland/core";
 import type { Tab } from "../Tab";
 import { browser } from "../Browser";
-import { Favicon } from "../components/Favicon";
+import { Favicon } from "@components/Favicon";
 
 export function HistoryPage(this: FC<{ tab: Tab }>) {
 	return (

@@ -1,11 +1,11 @@
 import { css, type FC } from "dreamland/core";
 import { browser } from "../Browser";
-import { Icon } from "./Icon";
-import { closeMenu } from "./Menu";
+import { Icon } from "@components/Icon";
+import { closeMenu } from "@components/Menu";
 import { iconClose, iconFolder, iconOpen, iconPause } from "../icons";
 import { formatBytes } from "../utils";
-import { Button } from "./Button";
-import { Favicon } from "./Favicon";
+import { Button } from "@components/Button";
+import { Favicon } from "@components/Favicon";
 
 export function DownloadsPopup() {
 	return (

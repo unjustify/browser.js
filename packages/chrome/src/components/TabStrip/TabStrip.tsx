@@ -1,12 +1,12 @@
 import { iconAdd, iconNew } from "../../icons";
 import { css, type FC } from "dreamland/core";
-import { OmnibarButton } from "../Omnibar/OmnibarButton";
+import { OmnibarButton } from "@components/Omnibar/OmnibarButton";
 import type { Tab } from "../../Tab";
 // import html2canvas from "html2canvas";
-import { setContextMenu } from "../Menu";
-import { DragTab } from "./DragTab";
+import { setContextMenu } from "@components/Menu";
+import { DragTab } from "@components/TabStrip/DragTab";
 import { markDirty } from "../../storage";
-import { requestUnfocusFrames } from "../Shell";
+import { requestUnfocusFrames } from "@components/Shell";
 
 type VisualTab = {
 	tab: Tab;

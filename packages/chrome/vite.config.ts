@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import path from "path";
 
 import { viteSingleFile } from "vite-plugin-singlefile";
 import { viteStaticCopy } from "vite-plugin-static-copy";
@@ -28,4 +29,9 @@ export default defineConfig({
 		// 	],
 		// }),
 	],
+	resolve: {
+		alias: {
+			"@components": path.resolve(__dirname, "./src/components"),
+		},
+	},
 });

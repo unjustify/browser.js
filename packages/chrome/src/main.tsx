@@ -7,7 +7,7 @@ import.meta.hot?.accept(() => location.reload());
 
 import { initBrowser } from "./Browser";
 let app = document.getElementById("app")!;
-import { Shell } from "./components/Shell";
+import { Shell } from "@components/Shell";
 import { App } from "./App";
 import { css } from "dreamland/core";
 import { setWispUrl } from "./proxy/wisp";

@@ -2,12 +2,12 @@ import { css, type Component, type FC } from "dreamland/core";
 import type { Tab } from "../Tab";
 import type { IconifyIcon } from "@iconify/types";
 import { versionInfo } from "@mercuryworkshop/scramjet";
-import { Icon } from "../components/Icon";
+import { Icon } from "@components/Icon";
 import { browser } from "../Browser";
-import { Checkbox } from "../components/Checkbox";
-import { Button } from "../components/Button";
-import { Input } from "../components/Input";
-import { AVAILABLE_SEARCH_ENGINES } from "../components/Omnibar/suggestions";
+import { Checkbox } from "@components/Checkbox";
+import { Button } from "@components/Button";
+import { Input } from "@components/Input";
+import { AVAILABLE_SEARCH_ENGINES } from "@components/Omnibar/suggestions";
 import { THEMES } from "../themes";
 
 import {

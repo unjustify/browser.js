@@ -1,10 +1,10 @@
 import type { FC } from "dreamland/core";
 import { css } from "dreamland/core";
-import { TabStrip } from "./components/TabStrip/TabStrip";
+import { TabStrip } from "@components/TabStrip/TabStrip";
 import { browser } from "./Browser";
 import { Tab } from "./Tab";
-import { BookmarksStrip } from "./components/BookmarksStrip";
-import { Omnibar } from "./components/Omnibar/Omnibar";
+import { BookmarksStrip } from "@components/BookmarksStrip";
+import { Omnibar } from "@components/Omnibar/Omnibar";
 import { getTheme } from "./themes";
 import { contexts } from "./proxy/scramjet";
 

@@ -1,11 +1,11 @@
 import { css, type FC } from "dreamland/core";
-import { Favicon } from "../Favicon";
-import { Icon } from "../Icon";
-import { SiteOptionsButton } from "./SiteOptionsButton";
+import { Favicon } from "@components/Favicon";
+import { Icon } from "@components/Icon";
+import { SiteOptionsButton } from "@components/Omnibar/SiteOptionsButton";
 import { iconForwards, iconSearch } from "../../icons";
 import { splitUrl } from "../../utils";
-import { OmnibarButton } from "./OmnibarButton";
-import { BookmarkButton } from "./BookmarkButton";
+import { OmnibarButton } from "@components/Omnibar/OmnibarButton";
+import { BookmarkButton } from "@components/Omnibar/BookmarkButton";
 
 export function UrlInput(
 	this: FC<{

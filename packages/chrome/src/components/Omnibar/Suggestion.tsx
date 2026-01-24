@@ -10,8 +10,8 @@ import {
 	iconCloud,
 } from "../../icons";
 import { browser } from "../../Browser";
-import { Icon } from "../Icon";
-import { Favicon } from "../Favicon";
+import { Icon } from "@components/Icon";
+import { Favicon } from "@components/Favicon";
 import { trimUrl } from "./utils";
 
 const renderResultHighlight = (title: string, inputValue: string) => {

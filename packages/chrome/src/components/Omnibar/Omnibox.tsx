@@ -1,5 +1,5 @@
 import { createDelegate, css, type FC, type Delegate } from "dreamland/core";
-import { setContextMenu } from "../Menu";
+import { setContextMenu } from "@components/Menu";
 import { browser } from "../../Browser";
 import {
 	fetchGoogleTrending,
@@ -8,9 +8,9 @@ import {
 	type OmniboxResult,
 } from "./suggestions";
 import { trimUrl } from "./utils";
-import { UrlInput } from "./UrlInput";
-import { Suggestion } from "./Suggestion";
-import { requestUnfocusFrames } from "../Shell";
+import { UrlInput } from "@components/Omnibar/UrlInput";
+import { Suggestion } from "@components/Omnibar/Suggestion";
+import { requestUnfocusFrames } from "@components/Shell";
 
 export const focusOmnibox = createDelegate<void>();
 

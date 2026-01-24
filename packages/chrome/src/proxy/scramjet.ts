@@ -56,7 +56,7 @@ import { bare, transport, wispUrl } from "./wisp";
 import { codecDecode, codecEncode } from "./codec";
 import { Controller, controllerForURL, makeId } from "./Controller";
 import type { Tab } from "../Tab";
-import { createMenu } from "../components/Menu";
+import { createMenu } from "@components/Menu";
 import { pageContextItems } from "./contextitems";
 import type { BodyType } from "../../../scramjet/packages/controller/src/types";
 import { getTheme } from "../themes";

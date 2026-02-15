@@ -1,11 +1,11 @@
 import { css, type FC } from "dreamland/core";
-import type { Tab } from "../Tab";
-import { browser } from "../Browser";
+import type { Tab } from "../Tab/Tab";
 import { trimUrl } from "@components/Omnibar/utils";
 import { createMenu } from "@components/Menu";
 import { Icon } from "@components/Icon";
 import { iconLink, iconOpen, iconSearch } from "../icons";
 import { Favicon } from "@components/Favicon";
+import { profileService, tabsService } from "..";
 
 export function NewTabPage(this: FC<{ tab: Tab }>) {
 	return (
@@ -21,7 +21,9 @@ export function NewTabPage(this: FC<{ tab: Tab }>) {
 							on:keydown={(e: KeyboardEvent) => {
 								if (e.key === "Enter") {
 									e.preventDefault();
-									browser.searchNavigate((e.target as HTMLInputElement).value);
+									tabsService.searchNavigate(
+										(e.target as HTMLInputElement).value
+									);
 								}
 							}}
 							placeholder="Search Google or type A URL"
@@ -37,7 +39,7 @@ export function NewTabPage(this: FC<{ tab: Tab }>) {
 			</div>
 			<div class="main">
 				<div class="suggestions">
-					{browser.globalhistory.slice(0, 5).map((entry) => (
+					{profileService.globalhistory.slice(0, 5).map((entry) => (
 						<div
 							class="suggestion"
 							on:contextmenu={(e: MouseEvent) => {
@@ -45,18 +47,18 @@ export function NewTabPage(this: FC<{ tab: Tab }>) {
 									{
 										label: "Open",
 										icon: iconLink,
-										action: () => browser.activetab.pushNavigate(entry.url),
+										action: () => tabsService.activetab.pushNavigate(entry.url),
 									},
 									{
 										label: "Open in New Tab",
 										icon: iconOpen,
-										action: () => browser.newTab(entry.url),
+										action: () => tabsService.newTab(entry.url),
 									},
 								]);
 								e.preventDefault();
 								e.stopPropagation();
 							}}
-							on:click={() => browser.newTab(entry.url)}
+							on:click={() => tabsService.newTab(entry.url)}
 						>
 							<div class="suggestioninner">
 								<div class="circle">

@@ -1,6 +1,6 @@
 import type Protocol from "devtools-protocol";
 import { browser } from "./Browser";
-import type { Tab } from "./Tab";
+import type { Tab } from "./Tab/Tab";
 
 export function startCDP(message: (message: string) => void): CDPServer {
 	const server = new CDPServer(message);

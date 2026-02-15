@@ -1,5 +1,5 @@
 import { css, type FC } from "dreamland/core";
-import type { Tab } from "../Tab";
+import type { Tab } from "../Tab/Tab";
 
 // import { editor } from "monaco-editor";
 

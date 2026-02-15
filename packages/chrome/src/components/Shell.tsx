@@ -1,7 +1,7 @@
 import { createDelegate, css, type FC } from "dreamland/core";
-import { browser } from "../Browser";
-import { forceScreenshot, popTab, pushTab } from "../Browser";
-import { takeScreenshotGDM } from "../screenshot";
+import { takeScreenshotGDM } from "../Tab/screenshot";
+import { popTab, pushTab } from "../services/TabsService";
+import { tabsService } from "..";
 
 let locks: Symbol[] = [];
 let setUnfocus = createDelegate<boolean>();
@@ -38,7 +38,7 @@ export function Shell(this: FC<{}>) {
 				class="container"
 				data-tab={tab.id}
 				id={"tab" + tab.id}
-				class:active={use(browser.activetab).map((t) => t === tab)}
+				class:active={use(tabsService.activetab).map((t) => t === tab)}
 				class:showframe={use(tab.internalpage).map((t) => !t)}
 			>
 				<div class="mainframecontainer">
@@ -76,18 +76,18 @@ export function Shell(this: FC<{}>) {
 		if (!container) throw new Error(`No container found for tab ${tab.id}`);
 		container.remove();
 	});
-	forceScreenshot.listen(async (tab) => {
-		const container = this.root.querySelector(
-			`[data-tab="${tab.id}"]`
-		) as HTMLElement;
-		if (!container) throw new Error(`No container found for tab ${tab.id}`);
+	// forceScreenshot.listen(async (tab) => {
+	// 	const container = this.root.querySelector(
+	// 		`[data-tab="${tab.id}"]`
+	// 	) as HTMLElement;
+	// 	if (!container) throw new Error(`No container found for tab ${tab.id}`);
 
-		let blob = await takeScreenshotGDM(container);
-		if (blob) tab.screenshot = URL.createObjectURL(blob);
-		else {
-			// tab.screenshot = await takeScreenshotSvg(container);
-		}
-	});
+	// 	let blob = await takeScreenshotGDM(container);
+	// 	if (blob) tab.screenshot = URL.createObjectURL(blob);
+	// 	else {
+	// 		// tab.screenshot = await takeScreenshotSvg(container);
+	// 	}
+	// });
 	setUnfocus.listen((unfocus) => {
 		if (unfocus) {
 			this.root

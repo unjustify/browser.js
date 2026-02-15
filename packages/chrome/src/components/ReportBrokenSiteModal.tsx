@@ -2,9 +2,9 @@ import { css, type FC } from "dreamland/core";
 import { Button } from "@components/Button";
 import { Icon } from "@components/Icon";
 import { iconClose, iconError, iconCheckmark } from "../icons";
-import { browser } from "../Browser";
 import { versionInfo } from "@mercuryworkshop/scramjet";
 import { Input } from "@components/Input";
+import { tabsService } from "..";
 
 export function ReportBrokenSiteModal(
 	this: FC<
@@ -20,7 +20,7 @@ export function ReportBrokenSiteModal(
 		}
 	>
 ) {
-	this.url = browser.activetab.url.href;
+	this.url = tabsService.activetab.url.href;
 	this.version = `${versionInfo.version} (${versionInfo.build})`;
 	this.ua = navigator.userAgent;
 	this.description = "";

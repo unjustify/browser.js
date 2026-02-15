@@ -1,6 +1,6 @@
 import { css, type FC } from "dreamland/core";
 import { defaultFaviconUrl } from "../assets/favicon";
-import { browser } from "../Browser";
+import { faviconService } from "..";
 
 export function Favicon(
 	this: FC<
@@ -20,7 +20,10 @@ export function Favicon(
 		if (iconUrl) {
 			if (this.url !== iconUrl) this.url = iconUrl;
 		} else if (domain) {
-			browser.fetchFavicon(domain).then((favicon) => {
+			// set default favicon while it's loading
+			// TODO: does this cause flickering?
+			this.url = defaultFaviconUrl;
+			faviconService.fetchFavicon(domain).then((favicon) => {
 				if (favicon?.iconUrl !== this.url)
 					this.url = favicon?.iconUrl || defaultFaviconUrl;
 			});

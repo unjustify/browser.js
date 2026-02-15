@@ -68,3 +68,7 @@ export function splitUrl(url: URL): [string, string, string] {
 export const isFirefox =
 	navigator.userAgent.includes("Gecko/") &&
 	!navigator.userAgent.includes("Chrome");
+
+export function uuid(prefix: string = ""): string {
+	return prefix + Math.random().toString(36).substring(2, 15);
+}

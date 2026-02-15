@@ -1,12 +1,12 @@
 import { css, type FC } from "dreamland/core";
-import { browser } from "../Browser";
 import { Icon } from "@components/Icon";
 import { closeMenu } from "@components/Menu";
 import { iconClose, iconFolder, iconOpen, iconPause } from "../icons";
-import { formatBytes } from "../utils";
+import { formatBytes } from "../util";
 import { INTERNAL_URL_PROTOCOL } from "../consts";
 import { Button } from "@components/Button";
 import { Favicon } from "@components/Favicon";
+import { downloadsService, tabsService } from "..";
 
 export function DownloadsPopup() {
 	return (
@@ -25,10 +25,10 @@ export function DownloadsPopup() {
 				</div>
 			</div>
 			<div class="entries">
-				{use(browser.sessionDownloadHistory).mapEach((b) => (
+				{use(downloadsService.sessionDownloadHistory).mapEach((b) => (
 					<div class="entry">
 						<div class="iconcontainer">
-							<Favicon url={null} size="medium"></Favicon>
+							<Favicon domain={new URL(b.url).hostname} size="medium"></Favicon>
 						</div>
 						<div class="contents">
 							<span>{b.filename}</span>
@@ -85,7 +85,7 @@ export function DownloadsPopup() {
 			<div
 				class="footer"
 				on:click={() => {
-					browser.newTab(new URL(`${INTERNAL_URL_PROTOCOL}//downloads`));
+					tabsService.newTab(new URL(`${INTERNAL_URL_PROTOCOL}//downloads`));
 					closeMenu();
 				}}
 			>

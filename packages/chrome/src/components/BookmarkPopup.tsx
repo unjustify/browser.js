@@ -1,9 +1,10 @@
 import { css, type FC, type Stateful } from "dreamland/core";
 import { Icon } from "@components/Icon";
-import { browser, type BookmarkEntry } from "../Browser";
 import { Input } from "@components/Input";
 import { closeMenu } from "@components/Menu";
 import { Button } from "@components/Button";
+import type { BookmarkEntry } from "../services/ProfileService";
+import { profileService } from "..";
 
 export function BookmarkPopup(
 	this: FC<{
@@ -19,13 +20,13 @@ export function BookmarkPopup(
 				<Input label="Title" value={use(this.bookmark.title)} />
 			</div>
 			<div class="field">
-				<Input label="URL" value={use(this.bookmark.url)} />
+				<Input label="URL" value={use(this.bookmark.url.href)} />
 			</div>
 			<div class="actions">
 				<Button
 					on:click={() => {
 						if (!this.new) {
-							browser.bookmarks = browser.bookmarks.filter(
+							profileService.bookmarks = profileService.bookmarks.filter(
 								(b) => b !== this.bookmark
 							);
 						}
@@ -38,7 +39,10 @@ export function BookmarkPopup(
 					variant="primary"
 					on:click={() => {
 						if (this.new) {
-							browser.bookmarks = [this.bookmark, ...browser.bookmarks];
+							profileService.bookmarks = [
+								this.bookmark,
+								...profileService.bookmarks,
+							];
 						}
 
 						closeMenu();

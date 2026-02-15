@@ -1,5 +1,5 @@
 import { css, type FC } from "dreamland/core";
-import type { Tab } from "../Tab";
+import type { Tab } from "../Tab/Tab";
 import { versionInfo } from "@mercuryworkshop/scramjet";
 
 export function AboutPage(this: FC<{ tab: Tab }>) {

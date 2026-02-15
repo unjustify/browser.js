@@ -1,0 +1,84 @@
+import { createState, createStore } from "dreamland/core";
+import type { Stateful } from "dreamland/core";
+import {
+	type AppearancePreference,
+	type ThemeId,
+	DEFAULT_THEME_ID,
+} from "../themes";
+import type { AVAILABLE_SEARCH_ENGINES } from "@components/Omnibar/suggestions";
+import { Service } from "./Service";
+
+export type Settings = {
+	appearance: AppearancePreference;
+	themeId: ThemeId;
+	startupPage: "new-tab" | "continue";
+	defaultZoom: number;
+	showBookmarksBar: boolean;
+	defaultSearchEngine: keyof typeof AVAILABLE_SEARCH_ENGINES;
+	searchSuggestionsEnabled: boolean;
+	blockTrackers: boolean;
+	clearHistoryOnExit: boolean;
+	doNotTrack: boolean;
+	extensionsDevMode: boolean;
+};
+
+const DEFAULT_SETTINGS: Settings = {
+	appearance: "system",
+	themeId: DEFAULT_THEME_ID,
+	startupPage: "continue",
+	defaultZoom: 100,
+	showBookmarksBar: true,
+	defaultSearchEngine: "google",
+	searchSuggestionsEnabled: true,
+	blockTrackers: true,
+	clearHistoryOnExit: false,
+	doNotTrack: true,
+	extensionsDevMode: false,
+};
+
+export type SettingsServiceState = {
+	settings: {
+		appearance: AppearancePreference;
+		themeId: ThemeId;
+		startupPage: "new-tab" | "continue";
+		defaultZoom: number;
+		showBookmarksBar: boolean;
+		defaultSearchEngine: keyof typeof AVAILABLE_SEARCH_ENGINES;
+		searchSuggestionsEnabled: boolean;
+		blockTrackers: boolean;
+		clearHistoryOnExit: boolean;
+		doNotTrack: boolean;
+		extensionsDevMode: boolean;
+	};
+};
+
+export class SettingsService extends Service {
+	public settings: Stateful<Settings>;
+
+	constructor(data: SettingsServiceState | null) {
+		super();
+		if (data) {
+			this.settings = this.store(data.settings);
+		} else {
+			this.settings = this.store(DEFAULT_SETTINGS);
+		}
+	}
+
+	save(): SettingsServiceState {
+		return {
+			settings: {
+				appearance: this.settings.appearance,
+				themeId: this.settings.themeId,
+				startupPage: this.settings.startupPage,
+				defaultZoom: this.settings.defaultZoom,
+				showBookmarksBar: this.settings.showBookmarksBar,
+				defaultSearchEngine: this.settings.defaultSearchEngine,
+				searchSuggestionsEnabled: this.settings.searchSuggestionsEnabled,
+				blockTrackers: this.settings.blockTrackers,
+				clearHistoryOnExit: this.settings.clearHistoryOnExit,
+				doNotTrack: this.settings.doNotTrack,
+				extensionsDevMode: this.settings.extensionsDevMode,
+			},
+		};
+	}
+}

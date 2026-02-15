@@ -1,9 +1,8 @@
 import { css, type Component, type FC } from "dreamland/core";
-import type { Tab } from "../Tab";
+import type { Tab } from "../Tab/Tab";
 import type { IconifyIcon } from "@iconify/types";
 import { versionInfo } from "@mercuryworkshop/scramjet";
 import { Icon } from "@components/Icon";
-import { browser } from "../Browser";
 import { Checkbox } from "@components/Checkbox";
 import { Button } from "@components/Button";
 import { Input } from "@components/Input";
@@ -18,6 +17,7 @@ import {
 	iconAbout,
 	iconError,
 } from "../icons";
+import { settingsService } from "..";
 
 export function SettingsPage(
 	this: FC<{ tab: Tab }, { selected: string; searchQuery: string }>
@@ -86,9 +86,11 @@ export function SettingsPage(
 														id="appearance-system"
 														name="appearance"
 														value="system"
-														checked={browser.settings.appearance === "system"}
+														checked={
+															settingsService.settings.appearance === "system"
+														}
 														on:change={() => {
-															browser.settings.appearance = "system";
+															settingsService.settings.appearance = "system";
 														}}
 													/>
 													<label for="appearance-system">System Default</label>
@@ -99,9 +101,11 @@ export function SettingsPage(
 														id="appearance-dark"
 														name="appearance"
 														value="dark"
-														checked={browser.settings.appearance === "dark"}
+														checked={
+															settingsService.settings.appearance === "dark"
+														}
 														on:change={() => {
-															browser.settings.appearance = "dark";
+															settingsService.settings.appearance = "dark";
 														}}
 													/>
 													<label for="appearance-dark">Dark</label>
@@ -112,9 +116,11 @@ export function SettingsPage(
 														id="appearance-light"
 														name="appearance"
 														value="light"
-														checked={browser.settings.appearance === "light"}
+														checked={
+															settingsService.settings.appearance === "light"
+														}
 														on:change={() => {
-															browser.settings.appearance = "light";
+															settingsService.settings.appearance = "light";
 														}}
 													/>
 													<label for="appearance-light">Light</label>
@@ -131,11 +137,11 @@ export function SettingsPage(
 												{THEMES.map((theme) => (
 													<div
 														class="theme-card"
-														class:selected={use(browser.settings.themeId).map(
-															(id) => id === theme.id
-														)}
+														class:selected={use(
+															settingsService.settings.themeId
+														).map((id) => id === theme.id)}
 														on:click={() => {
-															browser.settings.themeId = theme.id;
+															settingsService.settings.themeId = theme.id;
 														}}
 													>
 														<div class="theme-preview">
@@ -178,11 +184,11 @@ export function SettingsPage(
 														id="startup-new-tab"
 														name="startupPage"
 														value="new-tab"
-														checked={use(browser.settings.startupPage).map(
-															(v) => v === "new-tab"
-														)}
+														checked={use(
+															settingsService.settings.startupPage
+														).map((v) => v === "new-tab")}
 														on:change={() => {
-															browser.settings.startupPage = "new-tab";
+															settingsService.settings.startupPage = "new-tab";
 														}}
 													/>
 													<label for="startup-new-tab">Open New Tab Page</label>
@@ -193,11 +199,11 @@ export function SettingsPage(
 														id="startup-continue"
 														name="startupPage"
 														value="continue"
-														checked={use(browser.settings.startupPage).map(
-															(v) => v === "continue"
-														)}
+														checked={use(
+															settingsService.settings.startupPage
+														).map((v) => v === "continue")}
 														on:change={() => {
-															browser.settings.startupPage = "continue";
+															settingsService.settings.startupPage = "continue";
 														}}
 													/>
 													<label for="startup-continue">
@@ -217,7 +223,7 @@ export function SettingsPage(
 										<div class="setting-group">
 											<div class="checkbox-option">
 												<Checkbox
-													value={use(browser.settings.showBookmarksBar)}
+													value={use(settingsService.settings.showBookmarksBar)}
 													id="show-bookmarks-bar"
 												/>
 												<label for="show-bookmarks-bar">
@@ -247,7 +253,9 @@ export function SettingsPage(
 										<div class="setting-group">
 											<select
 												class="select-input"
-												value={use(browser.settings.defaultSearchEngine)}
+												value={use(
+													settingsService.settings.defaultSearchEngine
+												)}
 											>
 												{Object.keys(AVAILABLE_SEARCH_ENGINES).map((key) => (
 													<option value={key}>
@@ -268,7 +276,9 @@ export function SettingsPage(
 											<div class="checkbox-option">
 												<Checkbox
 													id="search-suggestions"
-													value={use(browser.settings.searchSuggestionsEnabled)}
+													value={use(
+														settingsService.settings.searchSuggestionsEnabled
+													)}
 												/>
 												<label for="search-suggestions">
 													Show search and site suggestions in the address bar
@@ -297,7 +307,7 @@ export function SettingsPage(
 											<div class="checkbox-option">
 												<Checkbox
 													id="block-trackers"
-													value={use(browser.settings.blockTrackers)}
+													value={use(settingsService.settings.blockTrackers)}
 												/>
 												<label for="block-trackers">
 													Block third-party trackers
@@ -307,7 +317,7 @@ export function SettingsPage(
 											<div class="checkbox-option">
 												<Checkbox
 													id="do-not-track"
-													value={use(browser.settings.doNotTrack)}
+													value={use(settingsService.settings.doNotTrack)}
 												/>
 												<label for="do-not-track">
 													Send 'Do Not Track' with browsing requests
@@ -328,7 +338,9 @@ export function SettingsPage(
 											<div class="checkbox-option">
 												<Checkbox
 													id="clear-history"
-													value={use(browser.settings.clearHistoryOnExit)}
+													value={use(
+														settingsService.settings.clearHistoryOnExit
+													)}
 												/>
 												<label for="clear-history">
 													Clear history when browser closes
@@ -378,16 +390,21 @@ export function SettingsPage(
 											<div class="checkbox-option">
 												<Checkbox
 													id="dev-mode"
-													value={use(browser.settings.extensionsDevMode)}
+													value={use(
+														settingsService.settings.extensionsDevMode
+													)}
 												/>
 												<label for="dev-mode">Enable developer mode</label>
 											</div>
 
-											{browser.settings.extensionsDevMode && (
-												<div class="dev-buttons">
-													<Button>Load Unpacked</Button>
-													<Button>Pack Extension</Button>
-												</div>
+											{use(settingsService.settings.extensionsDevMode).map(
+												(enabled) =>
+													enabled && (
+														<div class="dev-buttons">
+															<Button>Load Unpacked</Button>
+															<Button>Pack Extension</Button>
+														</div>
+													)
 											)}
 										</div>
 									</div>

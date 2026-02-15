@@ -1,9 +1,7 @@
-import { createState } from "dreamland/core";
-import { browser } from "./Browser";
-import { StatefulClass } from "./StatefulClass";
+import { StatefulClass } from "../util/StatefulClass";
 import type { Tab } from "./Tab";
-import { markDirty } from "./storage";
-import { INTERNAL_URL_PROTOCOL } from "./consts";
+import { INTERNAL_URL_PROTOCOL } from "../consts";
+import { profileService } from "..";
 
 // history api emulation
 export class HistoryState extends StatefulClass {
@@ -16,40 +14,11 @@ export class HistoryState extends StatefulClass {
 	virtual: boolean = false; // whether this state was created by pushState and can be navigated to without a full reload
 
 	constructor(partial?: Partial<HistoryState>) {
-		super(createState(Object.create(HistoryState.prototype)));
+		super();
 		Object.assign(this, partial);
 		this.timestamp = Date.now();
 	}
-
-	serialize(): SerializedHistoryState {
-		return {
-			state: this.state,
-			url: this.url.href,
-			title: this.title,
-			favicon: this.favicon,
-			timestamp: this.timestamp,
-		};
-	}
-	deserialize(de: SerializedHistoryState) {
-		this.state = de.state;
-		this.url = new URL(de.url);
-		this.title = de.title;
-		this.favicon = de.favicon;
-		this.timestamp = de.timestamp;
-	}
 }
-export type SerializedHistoryState = {
-	state: any;
-	url: string;
-	title: string | null;
-	favicon: string | null;
-	timestamp: number;
-};
-
-export type SerializedHistory = {
-	index: number;
-	states: SerializedHistoryState[];
-};
 
 export class History {
 	index: number = -1;
@@ -58,21 +27,6 @@ export class History {
 
 	constructor(private tab: Tab) {}
 
-	serialize(): SerializedHistory {
-		return {
-			index: this.index,
-			states: this.states.map((s) => s.serialize()),
-		};
-	}
-	deserialize(de: SerializedHistory) {
-		this.index = de.index;
-		this.states = de.states.map((s) => {
-			const state = new HistoryState();
-			state.deserialize(s);
-
-			return state;
-		});
-	}
 	current(): HistoryState {
 		if (this.index < 0 || this.index >= this.states.length) {
 			throw new Error("No current history state");
@@ -95,7 +49,7 @@ export class History {
 		if (virtual) hstate.virtual = true;
 
 		if (url.href != `${INTERNAL_URL_PROTOCOL}//newtab`)
-			browser.globalhistory.push(hstate);
+			profileService.globalhistory = [...profileService.globalhistory, hstate];
 		this.states.push(hstate);
 		this.index++;
 
@@ -107,7 +61,6 @@ export class History {
 		this.tab.canGoBack = this.canGoBack();
 		this.tab.canGoForward = this.canGoForward();
 
-		markDirty();
 		return this.states[this.index];
 	}
 	replace(

@@ -1,8 +1,8 @@
-import { browser } from "../../Browser";
 import { bare } from "../../proxy/wisp";
 import { INTERNAL_URL_PROTOCOL } from "../../consts";
 
 import * as tldts from "tldts";
+import { profileService, settingsService } from "../..";
 
 export type OmniboxResult = {
 	kind:
@@ -186,7 +186,7 @@ const fetchHistoryResults = (query: string): OmniboxResult[] => {
 	const results: OmniboxResult[] = [];
 	const lowerQuery = query.toLowerCase();
 
-	for (const entry of browser.globalhistory) {
+	for (const entry of profileService.globalhistory) {
 		const urlMatch = entry.url.href.toLowerCase().includes(lowerQuery);
 		const titleMatch = entry.title?.toLowerCase()?.includes(lowerQuery);
 
@@ -311,8 +311,9 @@ const addDirectResult = (query: string, results: OmniboxResult[]) => {
 	results.unshift({
 		kind: "directsearch",
 		url: new URL(
+			// TODO: this is duplicated in a lot of places..
 			AVAILABLE_SEARCH_ENGINES[
-				browser.settings.defaultSearchEngine
+				settingsService.settings.defaultSearchEngine
 			].searchUrlBuilder(query)
 		),
 		title: query,
@@ -329,14 +330,14 @@ const fetchGoogleSuggestions = async (
 	try {
 		const resp = await bare.fetch(
 			AVAILABLE_SEARCH_ENGINES[
-				browser.settings.defaultSearchEngine
+				settingsService.settings.defaultSearchEngine
 			].suggestUrlBuilder(query)
 		);
 
 		const json = await resp.json();
 		let rawSuggestions =
 			AVAILABLE_SEARCH_ENGINES[
-				browser.settings.defaultSearchEngine
+				settingsService.settings.defaultSearchEngine
 			].suggestionParser(json);
 		rawSuggestions = rawSuggestions.slice(0, 5);
 		const suggestions: OmniboxResult[] = [];
@@ -351,7 +352,7 @@ const fetchGoogleSuggestions = async (
 				title: item,
 				url: new URL(
 					AVAILABLE_SEARCH_ENGINES[
-						browser.settings.defaultSearchEngine
+						settingsService.settings.defaultSearchEngine
 					].searchUrlBuilder(query)
 				),
 				favicon: null,

@@ -1,9 +1,9 @@
 import { createState, css, type FC } from "dreamland/core";
 import { Icon } from "@components/Icon";
 import { iconAdd, iconOpen, iconLink, iconBrush, iconTrash } from "../icons";
-import { browser, type BookmarkEntry } from "../Browser";
 import { createMenu, createMenuCustom, setContextMenu } from "@components/Menu";
 import { BookmarkPopup } from "@components/BookmarkPopup";
+import { profileService, settingsService, tabsService } from "..";
 
 export function BookmarksStrip(this: FC<{}>) {
 	this.cx.mount = () => {
@@ -15,29 +15,30 @@ export function BookmarksStrip(this: FC<{}>) {
 			},
 			{
 				label: "Pin Bookmarks Strip",
-				checkbox: use(browser.settings.showBookmarksBar),
+				checkbox: use(settingsService.settings.showBookmarksBar),
 			},
 		]);
 	};
 	return (
 		<div>
-			{use(browser.bookmarks).mapEach((b) => (
+			{use(profileService.bookmarks).mapEach((b) => (
 				<button
 					on:auxclick={(e: MouseEvent) => {
 						if (e.button != 1) return;
-						browser.newTab(new URL(b.url));
+						tabsService.newTab(new URL(b.url));
 					}}
 					on:contextmenu={(e: MouseEvent) => {
 						createMenu({ left: e.clientX, top: e.clientY }, [
 							{
 								label: "Open",
 								icon: iconLink,
-								action: () => browser.activetab.pushNavigate(new URL(b.url)),
+								action: () =>
+									tabsService.activetab.pushNavigate(new URL(b.url)),
 							},
 							{
 								label: "Open in New Tab",
 								icon: iconOpen,
-								action: () => browser.newTab(new URL(b.url)),
+								action: () => tabsService.newTab(new URL(b.url)),
 							},
 							{
 								label: "Edit Bookmark",
@@ -59,7 +60,9 @@ export function BookmarksStrip(this: FC<{}>) {
 								label: "Delete Bookmark",
 								icon: iconTrash,
 								action: () => {
-									browser.bookmarks = browser.bookmarks.filter((br) => br != b);
+									profileService.bookmarks = profileService.bookmarks.filter(
+										(br) => br != b
+									);
 								},
 							},
 						]);
@@ -67,7 +70,7 @@ export function BookmarksStrip(this: FC<{}>) {
 						e.stopPropagation();
 					}}
 					on:click={() => {
-						browser.activetab.pushNavigate(new URL(b.url));
+						tabsService.activetab.pushNavigate(new URL(b.url));
 					}}
 				>
 					<img src={use(b.favicon)}></img>

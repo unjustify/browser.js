@@ -1,20 +1,20 @@
 import { css, type FC } from "dreamland/core";
-import type { Tab } from "../../Tab";
+import type { Tab } from "../../Tab/Tab";
 import { setContextMenu } from "@components/Menu";
 import { iconClose, iconDuplicate, iconNew, iconRefresh } from "../../icons";
-import { browser, forceScreenshot } from "../../Browser";
 import { Icon } from "@components/Icon";
 import {
 	activeTooltips,
 	fastClose,
 	TabTooltip,
 } from "@components/TabStrip/TabTooltip";
+import { tabsService } from "../..";
 
 export function DragTab(
 	this: FC<
 		{
 			active: boolean;
-			id: number;
+			id: string;
 			tab: Tab;
 			mousedown: (e: MouseEvent) => void;
 			destroy: () => void;
@@ -33,7 +33,7 @@ export function DragTab(
 				label: "New tab to the right",
 				icon: iconNew,
 				action: () => {
-					browser.newTabRight(this.tab);
+					tabsService.newTabRight(this.tab);
 				},
 			},
 			{
@@ -47,7 +47,7 @@ export function DragTab(
 				label: "Duplicate",
 				icon: iconDuplicate,
 				action: () => {
-					browser.newTabRight(this.tab, this.tab.url);
+					tabsService.newTabRight(this.tab, this.tab.url);
 				},
 			},
 			{
@@ -103,7 +103,7 @@ export function DragTab(
 					this.tooltipActive = false;
 				}}
 				on:mouseenter={() => {
-					forceScreenshot(this.tab);
+					// forceScreenshot(this.tab);
 					if (hoverTimeout) clearTimeout(hoverTimeout);
 
 					if (activeTooltips > 0) {

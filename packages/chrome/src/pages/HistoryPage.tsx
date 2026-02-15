@@ -1,7 +1,7 @@
 import { css, type FC } from "dreamland/core";
-import type { Tab } from "../Tab";
-import { browser } from "../Browser";
+import type { Tab } from "../Tab/Tab";
 import { Favicon } from "@components/Favicon";
+import { profileService, tabsService } from "..";
 
 export function HistoryPage(this: FC<{ tab: Tab }>) {
 	return (
@@ -10,13 +10,13 @@ export function HistoryPage(this: FC<{ tab: Tab }>) {
 				<h1>History</h1>
 			</nav>
 			<ul class="entries">
-				{browser.globalhistory
+				{profileService.globalhistory
 					.sort((a, b) => b.timestamp - a.timestamp)
 					.map((entry) => (
 						<li
 							class="entry"
 							on:click={() => {
-								browser.newTab(entry.url);
+								tabsService.newTab(entry.url);
 							}}
 						>
 							<span

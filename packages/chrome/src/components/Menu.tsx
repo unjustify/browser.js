@@ -1,16 +1,9 @@
-import {
-	createDelegate,
-	css,
-	Pointer,
-	type FC,
-	type DLElement,
-} from "dreamland/core";
-import { browser } from "../Browser";
+import { createDelegate, css, Pointer, type FC } from "dreamland/core";
 import { Checkbox } from "@components/Checkbox";
 import { Icon } from "@components/Icon";
 import type { IconifyIcon } from "@iconify/types";
-import { emToPx } from "../utils";
-import { isPuter } from "../main";
+import { emToPx } from "../util";
+import { isPuter } from "..";
 import { requestUnfocusFrames } from "@components/Shell";
 
 export const closeMenu = createDelegate<void>();
@@ -218,7 +211,7 @@ Menu.style = css`
 	}
 `;
 
-let activeMenu: DLElement<typeof Menu> | null = null;
+let activeMenu: HTMLElement | null = null;
 
 type MenuItem =
 	| {
@@ -241,7 +234,7 @@ export function setContextMenu(elm: HTMLElement, items: MenuItem[]) {
 export function createMenu(
 	position: PositionConstraints,
 	items: MenuItem[]
-): DLElement<typeof Menu> {
+): HTMLElement {
 	if (isPuter) {
 		puter.ui.contextMenu({
 			items: items.map((i) =>
@@ -261,9 +254,7 @@ export function createMenu(
 		closeMenu();
 	}
 
-	let menu = (<Menu position={position} items={items} />) as DLElement<
-		typeof Menu
-	>;
+	let menu = (<Menu position={position} items={items} />) as HTMLElement;
 	activeMenu = menu;
 
 	return menu;
@@ -272,14 +263,12 @@ export function createMenu(
 export function createMenuCustom(
 	position: PositionConstraints,
 	custom: HTMLElement
-): DLElement<typeof Menu> {
+): HTMLElement {
 	if (activeMenu) {
 		closeMenu();
 	}
 
-	let menu = (<Menu position={position} custom={custom} />) as DLElement<
-		typeof Menu
-	>;
+	let menu = (<Menu position={position} custom={custom} />) as HTMLElement;
 	activeMenu = menu;
 
 	return menu;

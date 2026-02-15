@@ -20,7 +20,6 @@ import { RpcHelper } from "@mercuryworkshop/rpc";
 import scramjetWASM from "../../../scramjet/packages/core/dist/scramjet.wasm?url";
 import injectScript from "../../../inject/dist/inject.js?url";
 
-import { browser } from "../Browser";
 export const virtualWasmPath = "scramjet.wasm.js";
 export const virtualInjectPath = "inject.js";
 
@@ -55,11 +54,17 @@ import type {
 import { bare, transport, wispUrl } from "./wisp";
 import { codecDecode, codecEncode } from "./codec";
 import { Controller, controllerForURL, makeId } from "./Controller";
-import type { Tab } from "../Tab";
+import type { Tab } from "../Tab/Tab";
 import { createMenu } from "@components/Menu";
 import { pageContextItems } from "./contextitems";
 import type { BodyType } from "../../../scramjet/packages/controller/src/types";
 import { getTheme } from "../themes";
+import {
+	downloadsService,
+	profileService,
+	settingsService,
+	tabsService,
+} from "..";
 function findSequence(
 	top: Window,
 	target: Window,
@@ -97,7 +102,7 @@ class ProxyFrameContext {
 				load: async ({ url, sequence }) => {
 					this.windowproxy = reduceSequence(sequence);
 					tab =
-						browser.tabs.find(
+						tabsService.tabs.find(
 							(t) => t.frame.frame.contentWindow === this.windowproxy
 						) || null;
 					if (!tab) return;
@@ -154,7 +159,7 @@ class ProxyFrameContext {
 					}
 				},
 				newtab: async ({ url }) => {
-					const tab = browser.newTab(new URL(url));
+					const tab = tabsService.newTab(new URL(url));
 					await tab.waitForInit;
 					const seq = findSequence(
 						top!,
@@ -203,7 +208,7 @@ export function renderErrorPage(controller: Controller, error: Error): string {
 	let frameContext = new ProxyFrameContext(controller, contextId);
 	contexts.push(frameContext);
 
-	const theme = getTheme(browser.settings.themeId);
+	const theme = getTheme(settingsService.settings.themeId);
 
 	return `
 		<script src="${controller.prefix.href}${virtualWasmPath}"></script>
@@ -213,7 +218,7 @@ export function renderErrorPage(controller: Controller, error: Error): string {
 				id: "${contextId}",
 				sequence: ${JSON.stringify(findSequence(top!, self)!)},
 				config: ${JSON.stringify(makeConfig())},
-				cookies: ${JSON.stringify(browser.cookieJar.dump())},
+				cookies: ${JSON.stringify(profileService.cookieJar.dump())},
 				wisp: ${JSON.stringify(wispUrl)},
 				codecEncode: ${codecEncode.toString()},
 				codecDecode: ${codecDecode.toString()},
@@ -243,7 +248,7 @@ export function createFetchHandler(controller: Controller) {
 				id: "${contextId}",
 				sequence: ${JSON.stringify(findSequence(top!, self)!)},
 				config: ${JSON.stringify(makeConfig())},
-				cookies: ${JSON.stringify(browser.cookieJar.dump())},
+				cookies: ${JSON.stringify(profileService.cookieJar.dump())},
 				wisp: ${JSON.stringify(wispUrl)},
 				codecEncode: ${codecEncode.toString()},
 				codecDecode: ${codecDecode.toString()},
@@ -294,7 +299,7 @@ export function createFetchHandler(controller: Controller) {
 				codecEncode,
 				codecDecode,
 			},
-			cookieJar: browser.cookieJar,
+			cookieJar: profileService.cookieJar,
 			config: makeConfig(),
 			prefix: controller.prefix,
 		},
@@ -303,7 +308,7 @@ export function createFetchHandler(controller: Controller) {
 		},
 		async fetchBlobUrl(blobUrl: string) {
 			// find a random tab under this controller
-			const tab = browser.tabs.find(
+			const tab = tabsService.tabs.find(
 				(tab) => tab.frame.controller === controller
 			);
 			if (!tab) throw new Error("No tab found for blob fetch (?)");
@@ -516,7 +521,7 @@ export async function handlefetch(
 		}
 		const length = fetchresponse.headers.get("content-length") || "0";
 
-		browser.startDownload({
+		downloadsService.startDownload({
 			filename,
 			url: unrewriteUrl(data.rawUrl, { prefix: controller.prefix } as any),
 			type:

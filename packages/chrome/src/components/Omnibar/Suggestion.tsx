@@ -9,10 +9,10 @@ import {
 	iconLink,
 	iconCloud,
 } from "../../icons";
-import { browser } from "../../Browser";
 import { Icon } from "@components/Icon";
 import { Favicon } from "@components/Favicon";
 import { trimUrl } from "./utils";
+import { settingsService } from "../..";
 
 const renderResultHighlight = (title: string, inputValue: string) => {
 	if (title.toLowerCase().startsWith(inputValue.toLowerCase())) {
@@ -102,8 +102,9 @@ export function Suggestion(
 							{" "}
 							-{" "}
 							{
-								AVAILABLE_SEARCH_ENGINES[browser.settings.defaultSearchEngine]
-									.name
+								AVAILABLE_SEARCH_ENGINES[
+									settingsService.settings.defaultSearchEngine
+								].name
 							}{" "}
 							Search
 						</span>

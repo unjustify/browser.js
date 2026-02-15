@@ -15,14 +15,13 @@ import {
 } from "../../icons";
 import { createMenu, createMenuCustom } from "@components/Menu";
 import { OmnibarButton } from "@components/Omnibar/OmnibarButton";
-import type { Tab } from "../../Tab";
+import type { Tab } from "../../Tab/Tab";
 import { Omnibox } from "@components/Omnibar/Omnibox";
-import { browser } from "../../Browser";
 import { Icon } from "@components/Icon";
 import { defaultFaviconUrl } from "../../assets/favicon";
 
-import type { HistoryState } from "../../History";
-import { isPuter, puterBranding } from "../../main";
+import type { HistoryState } from "../../Tab/History";
+import { isPuter, puterBranding, tabsService, downloadsService } from "../..";
 import { DownloadsPopup } from "@components/DownloadsPopup";
 import { CircularProgress } from "@components/Omnibar/CircularProgress";
 import { ReportBrokenSiteModal } from "@components/ReportBrokenSiteModal";
@@ -150,7 +149,7 @@ export function Omnibar(this: FC<{ tab: Tab }>) {
 			<Omnibox selectContent={selectContent} url={use(this.tab.url)}></Omnibox>
 			<Spacer></Spacer>
 			<OmnibarButton active={false} icon={iconExtension}></OmnibarButton>
-			{use(browser.sessionDownloadHistory)
+			{use(downloadsService.sessionDownloadHistory)
 				.map((arr) => arr.length > 0)
 				.and(
 					<div style="position: relative">
@@ -160,7 +159,7 @@ export function Omnibar(this: FC<{ tab: Tab }>) {
 							<Icon icon={iconDownload}></Icon>
 						</div>
 						<CircularProgress
-							progress={use(browser.downloadProgress)}
+							progress={use(downloadsService.downloadProgress)}
 						></CircularProgress>
 					</div>
 				)}
@@ -178,7 +177,7 @@ export function Omnibar(this: FC<{ tab: Tab }>) {
 							{
 								label: "New Tab",
 								action: () => {
-									browser.newTab(
+									tabsService.newTab(
 										new URL(`${INTERNAL_URL_PROTOCOL}//newtab`),
 										true
 									);
@@ -189,14 +188,16 @@ export function Omnibar(this: FC<{ tab: Tab }>) {
 							{
 								label: "History",
 								action: () => {
-									browser.newTab(new URL(`${INTERNAL_URL_PROTOCOL}//history`));
+									tabsService.newTab(
+										new URL(`${INTERNAL_URL_PROTOCOL}//history`)
+									);
 								},
 								icon: iconTime,
 							},
 							{
 								label: "Downloads",
 								action: () => {
-									browser.newTab(
+									tabsService.newTab(
 										new URL(`${INTERNAL_URL_PROTOCOL}//downloads`)
 									);
 								},
@@ -206,7 +207,9 @@ export function Omnibar(this: FC<{ tab: Tab }>) {
 							{
 								label: "About",
 								action: () => {
-									browser.newTab(new URL(`${INTERNAL_URL_PROTOCOL}//version`));
+									tabsService.newTab(
+										new URL(`${INTERNAL_URL_PROTOCOL}//version`)
+									);
 								},
 								icon: iconInfo,
 							},
@@ -224,7 +227,9 @@ export function Omnibar(this: FC<{ tab: Tab }>) {
 							{
 								label: "Settings",
 								action: () => {
-									browser.newTab(new URL(`${INTERNAL_URL_PROTOCOL}//settings`));
+									tabsService.newTab(
+										new URL(`${INTERNAL_URL_PROTOCOL}//settings`)
+									);
 								},
 								icon: iconSettings,
 							},

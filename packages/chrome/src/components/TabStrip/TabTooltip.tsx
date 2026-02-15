@@ -1,6 +1,6 @@
 import { createDelegate, css, type FC } from "dreamland/core";
-import type { Tab } from "../../Tab";
-import { isFirefox } from "../../utils";
+import type { Tab } from "../../Tab/Tab";
+import { isFirefox } from "../../util";
 
 export let activeTooltips = 0;
 export let lastX;

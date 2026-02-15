@@ -1,11 +1,10 @@
 import { iconAdd, iconNew } from "../../icons";
 import { css, type FC } from "dreamland/core";
 import { OmnibarButton } from "@components/Omnibar/OmnibarButton";
-import type { Tab } from "../../Tab";
+import type { Tab } from "../../Tab/Tab";
 // import html2canvas from "html2canvas";
 import { setContextMenu } from "@components/Menu";
 import { DragTab } from "@components/TabStrip/DragTab";
-import { markDirty } from "../../storage";
 import { requestUnfocusFrames } from "@components/Shell";
 
 type VisualTab = {
@@ -33,11 +32,11 @@ export function TabStrip(
 			rightEl: HTMLElement;
 			afterEl: HTMLElement;
 
-			currentlydragging: number;
+			currentlydragging: string | null;
 		}
 	>
 ) {
-	this.currentlydragging = -1;
+	this.currentlydragging = null;
 	this.visualtabs = [];
 
 	const [lock, unlock] = requestUnfocusFrames();
@@ -141,7 +140,7 @@ export function TabStrip(
 	};
 
 	window.addEventListener("mousemove", (e: MouseEvent) => {
-		if (this.currentlydragging == -1) return;
+		if (this.currentlydragging === null) return;
 		calcDragPos(
 			e,
 			this.visualtabs.find((tab) => tab.tab.id === this.currentlydragging)!
@@ -149,7 +148,7 @@ export function TabStrip(
 	});
 
 	window.addEventListener("mouseup", () => {
-		if (this.currentlydragging == -1) return;
+		if (this.currentlydragging === null) return;
 		const tab = this.visualtabs.find(
 			(tab) => tab.tab.id === this.currentlydragging
 		)!;
@@ -160,7 +159,7 @@ export function TabStrip(
 		tab.dragoffset = -1;
 		tab.dragpos = -1;
 		layoutTabs(true);
-		this.currentlydragging = -1;
+		this.currentlydragging = null;
 		unlock();
 	});
 
@@ -183,7 +182,7 @@ export function TabStrip(
 
 		if (this.activetab != tab.tab) {
 			this.activetab = tab.tab;
-			markDirty();
+			// markDirty();
 		}
 	};
 
@@ -197,7 +196,6 @@ export function TabStrip(
 	};
 
 	use(this.tabs).listen(() => {
-		console.log("new tabs", this.tabs);
 		let newvisualtabs: VisualTab[] = [];
 
 		for (let index = 0; index < this.tabs.length; index++) {

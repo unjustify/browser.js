@@ -1,6 +1,5 @@
 import { createDelegate, css, type FC, type Delegate } from "dreamland/core";
 import { setContextMenu } from "@components/Menu";
-import { browser } from "../../Browser";
 import { INTERNAL_URL_PROTOCOL } from "../../consts";
 import {
 	fetchGoogleTrending,
@@ -12,6 +11,7 @@ import { trimUrl } from "./utils";
 import { UrlInput } from "@components/Omnibar/UrlInput";
 import { Suggestion } from "@components/Omnibar/Suggestion";
 import { requestUnfocusFrames } from "@components/Shell";
+import { tabsService } from "../..";
 
 export const focusOmnibox = createDelegate<void>();
 
@@ -214,7 +214,7 @@ export function Omnibox(
 	};
 
 	const navTo = (url: URL) => {
-		browser.activetab.pushNavigate(url);
+		tabsService.activetab.pushNavigate(url);
 		this.active = false;
 		this.input.blur();
 	};

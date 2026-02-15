@@ -3,7 +3,7 @@ import { Favicon } from "@components/Favicon";
 import { Icon } from "@components/Icon";
 import { SiteOptionsButton } from "@components/Omnibar/SiteOptionsButton";
 import { iconForwards, iconSearch } from "../../icons";
-import { splitUrl } from "../../utils";
+import { splitUrl } from "../../util";
 import { INTERNAL_URL_PROTOCOL } from "../../consts";
 import { OmnibarButton } from "@components/Omnibar/OmnibarButton";
 import { BookmarkButton } from "@components/Omnibar/BookmarkButton";

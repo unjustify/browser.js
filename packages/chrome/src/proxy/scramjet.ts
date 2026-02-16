@@ -260,7 +260,9 @@ export function createFetchHandler(controller: Controller) {
 		return [
 			script(controller.prefix.href + virtualWasmPath),
 			script(controller.prefix.href + virtualInjectPath),
-			script("data:application/javascript;base64," + base64Encode(injected)),
+			script(
+				"data:text/javascript;charset=utf-8;base64," + base64Encode(injected)
+			),
 		];
 	};
 
@@ -284,7 +286,7 @@ export function createFetchHandler(controller: Controller) {
 		str += script(controller.prefix.href + virtualWasmPath);
 		str += script(controller.prefix.href + virtualInjectPath);
 		str += script(
-			`data:application/javascript;base64,${base64Encode(injectLoad)}`
+			`data:text/javascript;charset=utf-8;base64,${base64Encode(injectLoad)}`
 		);
 
 		return str;

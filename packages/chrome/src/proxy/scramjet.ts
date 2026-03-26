@@ -19,6 +19,7 @@ import { RpcHelper } from "@mercuryworkshop/rpc";
 
 import scramjetWASM from "../../../scramjet/packages/core/dist/scramjet.wasm?url";
 import injectScript from "../../../inject/dist/inject.js?url";
+import { isIsolated } from ".";
 
 export const virtualWasmPath = "scramjet.wasm.js";
 export const virtualInjectPath = "inject.js";
@@ -182,7 +183,19 @@ class ProxyFrameContext {
 			id,
 			(message, transfer) => {
 				if (this.windowproxy) {
-					this.windowproxy.postMessage(message, "*", transfer);
+					// is it a windowproxy?
+					if (isIsolated) {
+						this.windowproxy.postMessage(message, "*", transfer);
+					} else {
+						// TODO :(
+						this.windowproxy[Symbol.for("scramjet client global")].natives.call(
+							"window.postMessage",
+							this.windowproxy,
+							message,
+							"*",
+							transfer
+						);
+					}
 				} else {
 					console.warn("No window proxy available for frame context", this.id);
 				}

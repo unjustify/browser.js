@@ -92,7 +92,15 @@ export class ExecutionContextWrapper {
 				},
 			},
 			init.id,
-			(message, transfer) => chromeframe.postMessage(message, "*", transfer)
+			(message, transfer) => {
+				this.client.natives.call(
+					"window.postMessage",
+					chromeframe,
+					message,
+					"*",
+					transfer
+				);
+			}
 		);
 		addEventListener("message", (event) => {
 			// if (event.source !== chromeframe) return;

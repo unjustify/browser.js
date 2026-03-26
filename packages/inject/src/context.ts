@@ -22,6 +22,10 @@ import { setupTitleWatcher } from "./emulators/titlewatcher";
 import { setupAnchorHandler } from "./emulators/anchors";
 import { setupWindowOpen } from "./emulators/windowopen";
 
+function makeContextId(): string {
+	return "context-" + Math.random().toString(36).substring(2, 10);
+}
+
 function findSequence(
 	top: Window,
 	target: Window,
@@ -151,9 +155,11 @@ export class ExecutionContextWrapper {
 				if (!newseq) {
 					throw new Error("could not find chromeframe in top?");
 				}
+				const childId = makeContextId();
+				void this.rpc.call("registerFrameContext", { id: childId });
 				const context = new ExecutionContextWrapper(frameself, {
 					sequence: newseq,
-					id: this.init.id,
+					id: childId,
 					config: this.init.config,
 					cookies: this.cookieJar.dump(),
 					getInjectScripts: this.init.getInjectScripts,

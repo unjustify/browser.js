@@ -257,6 +257,7 @@ export function createFetchHandler(controller: Controller) {
 	const getInjectScripts: ScramjetInterface["getInjectScripts"] = (
 		meta,
 		handler,
+		htmlcontext,
 		script
 	) => {
 		const contextId = "context-" + makeId();

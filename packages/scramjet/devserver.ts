@@ -10,10 +10,12 @@ import rspackConfig from "./rspack.config.ts";
 import { server as wisp } from "@mercuryworkshop/wisp-js/server";
 import {
 	black,
+	normalizeWebsocketUrl,
 	logSuccess,
 	printBanner,
 	resetSuccessLog,
 	runRspack,
+	warnOnUrlEscape,
 } from "./devlib.ts";
 
 const image = await fs.readFile("./assets/scramjet-mini-noalpha.png");
@@ -30,8 +32,11 @@ const version = packagejson.version;
 const DEMO_PORT = process.env.DEMO_PORT || 4141;
 const WISP_PORT = process.env.WISP_PORT || 4142;
 
-process.env.VITE_WISP_URL =
-	process.env.VITE_WISP_URL || `ws://localhost:${WISP_PORT}/`;
+if (process.env.VITE_WISP_URL) {
+	process.env.VITE_WISP_URL = normalizeWebsocketUrl(process.env.VITE_WISP_URL);
+} else {
+	process.env.VITE_WISP_URL = `ws://localhost:${WISP_PORT}/`;
+}
 
 const wispserver = http.createServer((req, res) => {
 	res.writeHead(200, { "Content-Type": "text/plain" });
@@ -54,6 +59,8 @@ const server = await createServer({
 		strictPort: true,
 	},
 });
+
+warnOnUrlEscape(server);
 
 await server.listen();
 

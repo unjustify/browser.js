@@ -1,21 +1,20 @@
-import { type Component, type ComponentContext, css } from "dreamland/core";
+import { css, type FC } from "dreamland/core";
 
 export function Button(
-	props: {
+	this: FC<{
 		"on:click"?: (e: any) => void;
 		disabled?: boolean;
 		variant?: "primary" | "secondary" | "icon";
-		children: any;
-	},
-	cx: ComponentContext
+		children?: any;
+	}>
 ) {
 	return (
 		<button
-			class={props.variant || ""}
-			disabled={use(props.disabled)}
-			on:click={props["on:click"] || (() => {})}
+			class={this.variant || ""}
+			disabled={use(this.disabled)}
+			on:click={this["on:click"] || (() => {})}
 		>
-			{cx.children}
+			{this.children}
 		</button>
 	);
 }
@@ -27,7 +26,7 @@ Button.style = css`
 	:scope:not(.icon) {
 		background: var(--toolbar_field);
 		border: 1px solid var(--text-20);
-		border-radius: 4px;
+		border-radius: var(--radius);
 		padding: 0.5em 1em;
 		font-size: 0.9em;
 		cursor: pointer;
@@ -35,14 +34,34 @@ Button.style = css`
 	}
 	:scope:not(.icon):hover {
 		background: var(--text-10);
+		background-image: radial-gradient(
+			70% 80% at 50% 100%,
+			var(--text-8),
+			var(--text-5)
+		);
 	}
 	:scope.primary {
-		background: var(--tab_line);
+		background-color: var(--tab_line);
+		background-image: radial-gradient(
+			70% 80% at 50% 100%,
+			var(--tab_line),
+			var(--accent-shade-20)
+		);
+		box-shadow: inset 0px 0.05em 0.025em rgb(255 255 255 / 30%);
+		text-shadow: 0 0.055em 0.05em var(--accent-shade-20);
 		color: white;
+		font-weight: 500;
 		border-color: var(--tab_line);
 	}
+
 	:scope.primary:hover {
-		background: var(--accent-dark);
+		background-color: var(--accent-shade-10);
+		background-image: radial-gradient(
+			70% 80% at 50% 100%,
+			var(--accent-shade-5),
+			var(--accent-shade-25)
+		);
+		filter: saturate(1.1);
 	}
 
 	:scope:disabled,

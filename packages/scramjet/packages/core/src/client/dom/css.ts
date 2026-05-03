@@ -1,5 +1,6 @@
 import { rewriteCss, unrewriteCss } from "@rewriters/css";
 import { ScramjetClient } from "@client/index";
+import { Reflect_apply, Reflect_get, Reflect_set } from "@/shared/snapshot";
 
 export default function (client: ScramjetClient) {
 	client.Proxy("CSSStyleDeclaration.prototype.setProperty", {
@@ -13,7 +14,7 @@ export default function (client: ScramjetClient) {
 		apply(ctx) {
 			const v = ctx.call();
 			if (!v) return v;
-			ctx.return(unrewriteCss(v));
+			ctx.return(unrewriteCss(v, client.context));
 		},
 	});
 
@@ -22,7 +23,7 @@ export default function (client: ScramjetClient) {
 			ctx.set(rewriteCss(value, client.context, client.meta));
 		},
 		get(ctx) {
-			return unrewriteCss(ctx.get());
+			return unrewriteCss(ctx.get(), client.context);
 		},
 	});
 
@@ -49,7 +50,7 @@ export default function (client: ScramjetClient) {
 			ctx.set(rewriteCss(value, client.context, client.meta));
 		},
 		get(ctx) {
-			return unrewriteCss(ctx.get());
+			return unrewriteCss(ctx.get(), client.context);
 		},
 	});
 
@@ -69,12 +70,12 @@ export default function (client: ScramjetClient) {
 
 			return new Proxy(style, {
 				get(target, prop) {
-					const value = Reflect.get(target, prop);
+					const value = Reflect_get(target, prop);
 
 					if (typeof value === "function") {
 						return new Proxy(value, {
 							apply(target, that, args) {
-								return Reflect.apply(target, style, args);
+								return Reflect_apply(target, style, args);
 							},
 						});
 					}
@@ -82,14 +83,14 @@ export default function (client: ScramjetClient) {
 					if (prop in CSSStyleDeclaration.prototype) return value;
 					if (!value) return value;
 
-					return unrewriteCss(value);
+					return unrewriteCss(value, client.context);
 				},
 				set(target, prop, value) {
 					if (prop == "cssText" || value == "" || typeof value !== "string") {
-						return Reflect.set(target, prop, value);
+						return Reflect_set(target, prop, value);
 					}
 
-					return Reflect.set(
+					return Reflect_set(
 						target,
 						prop,
 						rewriteCss(value, client.context, client.meta)

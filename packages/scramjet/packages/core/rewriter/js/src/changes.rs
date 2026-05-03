@@ -52,7 +52,8 @@ pub enum JsChangeType<'alloc: 'data, 'data> {
 	},
 
 	/// insert `$wrapPostMessage(`
-	WrapPostMessage,
+	WrapPostMessageLeft,
+
 	/// insert `$scramerr(ident);`
 	ScramErrFn {
 		ident: Atom<'data>,
@@ -79,6 +80,7 @@ pub enum JsChangeType<'alloc: 'data, 'data> {
 	},
 
 	SetRealmFn,
+	OpeningParen,
 	/// insert `)`
 	ClosingParen {
 		semi: bool,
@@ -236,7 +238,7 @@ impl<'alloc: 'data, 'data> Transform<'data> for JsChange<'alloc, 'data> {
 				let steps: &'static str = Box::leak(steps.into_boxed_str());
 				LL::insert(transforms![",", &cfg.tempunusedid, "=(", &steps, "0)"])
 			}
-			Ty::WrapPostMessage => LL::insert(transforms![&cfg.wrappostmessagefn, "("]),
+			Ty::WrapPostMessageLeft => LL::insert(transforms![&cfg.wrappostmessagefn, "("]),
 			Ty::ScramErrFn { ident } => LL::insert(transforms!["$scramerr(", ident, ");"]),
 			Ty::ScramitizeFn => LL::insert(transforms![" $scramitize("]),
 			Ty::EvalRewriteFn => LL::insert(transforms![&cfg.rewritefn, "("]),
@@ -265,6 +267,7 @@ impl<'alloc: 'data, 'data> Transform<'data> for JsChange<'alloc, 'data> {
 				op,
 				"t))("
 			]),
+			Ty::OpeningParen => LL::insert(transforms!["("]),
 			Ty::ClosingParen { semi, replace } => {
 				let vec = if semi {
 					transforms![");"]
@@ -309,6 +312,7 @@ impl Ord for JsChange<'_, '_> {
 
 		match self.span.start.cmp(&other.span.start) {
 			Ordering::Equal => match (&self.ty, &other.ty) {
+				(Ty::CleanFunction { .. }, _) => Ordering::Less,
 				(Ty::ScramErrFn { .. }, _) => Ordering::Less,
 				(_, Ty::ScramErrFn { .. }) => Ordering::Greater,
 				(Ty::WrapFnRight { .. }, _) => Ordering::Less,

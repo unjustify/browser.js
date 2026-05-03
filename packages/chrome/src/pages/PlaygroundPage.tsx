@@ -1,5 +1,5 @@
-import { css } from "dreamland/core";
-import type { Tab } from "../Tab";
+import { css, type FC } from "dreamland/core";
+import type { Tab } from "../Tab/Tab";
 
 // import { editor } from "monaco-editor";
 
@@ -27,7 +27,7 @@ import type { Tab } from "../Tab";
 // 	}
 // `;
 
-export function PlaygroundPage(props: { tab: Tab }) {
+export function PlaygroundPage(this: FC<{ tab: Tab }>) {
 	return (
 		<div>
 			<h1>Scramjet Playground</h1>

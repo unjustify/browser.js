@@ -1,7 +1,7 @@
-import { createDelegate, css, type ComponentContext } from "dreamland/core";
-import { browser } from "../Browser";
-import { forceScreenshot, popTab, pushTab } from "../Browser";
-import { takeScreenshotGDM } from "../screenshot";
+import { createDelegate, css, type FC } from "dreamland/core";
+import { takeScreenshotGDM } from "../Tab/screenshot";
+import { popTab, pushTab } from "../services/TabsService";
+import { tabsService } from "..";
 
 let locks: Symbol[] = [];
 let setUnfocus = createDelegate<boolean>();
@@ -21,11 +21,11 @@ export function requestUnfocusFrames(): [() => void, () => void] {
 	];
 }
 
-export function Shell(_, cx: ComponentContext) {
+export function Shell(this: FC<{}>) {
 	pushTab.listen((tab) => {
 		// paint the iframes
-		tab.frame.frame.classList.add(cx.id!);
-		// tab.devtoolsFrame.frame.classList.add(cx.id!);
+		tab.frame.frame.classList.add(this.cx.id!);
+		// tab.devtoolsFrame.frame.classList.add(this.cx.id!);
 
 		let mouseMoveListen = (e: MouseEvent) => {
 			tab.devtoolsWidth = window.innerWidth - e.clientX;
@@ -33,12 +33,12 @@ export function Shell(_, cx: ComponentContext) {
 
 		const [lock, unlock] = requestUnfocusFrames();
 
-		cx.root.appendChild(
+		this.root.appendChild(
 			<div
 				class="container"
 				data-tab={tab.id}
 				id={"tab" + tab.id}
-				class:active={use(browser.activetab).map((t) => t === tab)}
+				class:active={use(tabsService.activetab).map((t) => t === tab)}
 				class:showframe={use(tab.internalpage).map((t) => !t)}
 			>
 				<div class="mainframecontainer">
@@ -72,32 +72,32 @@ export function Shell(_, cx: ComponentContext) {
 		);
 	});
 	popTab.listen((tab) => {
-		const container = cx.root.querySelector(`[data-tab="${tab.id}"]`);
+		const container = this.root.querySelector(`[data-tab="${tab.id}"]`);
 		if (!container) throw new Error(`No container found for tab ${tab.id}`);
 		container.remove();
 	});
-	forceScreenshot.listen(async (tab) => {
-		const container = cx.root.querySelector(
-			`[data-tab="${tab.id}"]`
-		) as HTMLElement;
-		if (!container) throw new Error(`No container found for tab ${tab.id}`);
+	// forceScreenshot.listen(async (tab) => {
+	// 	const container = this.root.querySelector(
+	// 		`[data-tab="${tab.id}"]`
+	// 	) as HTMLElement;
+	// 	if (!container) throw new Error(`No container found for tab ${tab.id}`);
 
-		let blob = await takeScreenshotGDM(container);
-		if (blob) tab.screenshot = URL.createObjectURL(blob);
-		else {
-			// tab.screenshot = await takeScreenshotSvg(container);
-		}
-	});
+	// 	let blob = await takeScreenshotGDM(container);
+	// 	if (blob) tab.screenshot = URL.createObjectURL(blob);
+	// 	else {
+	// 		// tab.screenshot = await takeScreenshotSvg(container);
+	// 	}
+	// });
 	setUnfocus.listen((unfocus) => {
 		if (unfocus) {
-			cx.root
+			this.root
 				.querySelectorAll(".mainframecontainer, .devtoolsframecontainer")
 				.forEach((el) => {
 					if (!(el instanceof HTMLElement)) return;
 					el.style.pointerEvents = "none";
 				});
 		} else {
-			cx.root
+			this.root
 				.querySelectorAll(".mainframecontainer, .devtoolsframecontainer")
 				.forEach((el) => {
 					if (!(el instanceof HTMLElement)) return;

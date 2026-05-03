@@ -71,6 +71,7 @@ export class RpcHelper<
 					);
 				})
 				.catch((err: any) => {
+					console.error(err);
 					this.sendRaw(
 						{
 							[this.id]: {
@@ -90,7 +91,7 @@ export class RpcHelper<
 		args: Remote[Method][0],
 		transfer: Transferable[] = []
 	): Promise<Remote[Method][1]> {
-		let token = this.counter++;
+		const token = this.counter++;
 		return new Promise((resolve, reject) => {
 			this.promiseCallbacks.set(token, { resolve, reject });
 			this.sendRaw(

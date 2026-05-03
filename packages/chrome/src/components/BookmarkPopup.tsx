@@ -1,48 +1,54 @@
-import { css, type Stateful } from "dreamland/core";
-import { Icon } from "./Icon";
-import { browser, type BookmarkEntry } from "../Browser";
-import { Input } from "./Input";
-import { closeMenu } from "./Menu";
-import { Button } from "./Button";
+import { css, type FC, type Stateful } from "dreamland/core";
+import { Icon } from "@components/Icon";
+import { Input } from "@components/Input";
+import { closeMenu } from "@components/Menu";
+import { Button } from "@components/Button";
+import type { BookmarkEntry } from "../services/ProfileService";
+import { profileService } from "..";
 
-export function BookmarkPopup(props: {
-	bookmark: Stateful<BookmarkEntry>;
-	new: boolean;
-}) {
+export function BookmarkPopup(
+	this: FC<{
+		bookmark: Stateful<BookmarkEntry>;
+		new: boolean;
+	}>
+) {
 	return (
 		<div>
-			<div class="title">{props.new ? "Add Bookmark" : "Edit Bookmark"}</div>
+			<div class="title">{this.new ? "Add Bookmark" : "Edit Bookmark"}</div>
 
 			<div class="field">
-				<Input label="Title" value={use(props.bookmark.title)} />
+				<Input label="Title" value={use(this.bookmark.title)} />
 			</div>
 			<div class="field">
-				<Input label="URL" value={use(props.bookmark.url)} />
+				<Input label="URL" value={use(this.bookmark.url.href)} />
 			</div>
 			<div class="actions">
 				<Button
 					on:click={() => {
-						if (!props.new) {
-							browser.bookmarks = browser.bookmarks.filter(
-								(b) => b !== props.bookmark
+						if (!this.new) {
+							profileService.bookmarks = profileService.bookmarks.filter(
+								(b) => b !== this.bookmark
 							);
 						}
 						closeMenu();
 					}}
 				>
-					{props.new ? "Cancel" : "Delete"}
+					{this.new ? "Cancel" : "Delete"}
 				</Button>
 				<Button
 					variant="primary"
 					on:click={() => {
-						if (props.new) {
-							browser.bookmarks = [props.bookmark, ...browser.bookmarks];
+						if (this.new) {
+							profileService.bookmarks = [
+								this.bookmark,
+								...profileService.bookmarks,
+							];
 						}
 
 						closeMenu();
 					}}
 				>
-					{props.new ? "Add" : "Save"}
+					{this.new ? "Add" : "Save"}
 				</Button>
 			</div>
 		</div>
@@ -75,7 +81,7 @@ BookmarkPopup.style = css`
 	button {
 		background: var(--toolbar_field);
 		border: 1px solid var(--text-20);
-		border-radius: 4px;
+		border-radius: var(--radius);
 		padding: 0.5em 1em;
 		font-size: 0.9em;
 		cursor: pointer;
@@ -90,6 +96,6 @@ BookmarkPopup.style = css`
 		border-color: var(--tab_line);
 	}
 	button.accent:hover {
-		background: var(--accent-dark);
+		background: var(--accent-shade-15);
 	}
 `;

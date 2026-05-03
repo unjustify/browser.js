@@ -1,8 +1,8 @@
-import { CookieJar } from "@/shared/cookie";
 import { rewriteCss } from "@rewriters/css";
 import { rewriteHtml, rewriteSrcset } from "@rewriters/html";
 import { rewriteUrl, unrewriteBlob, URLMeta } from "@rewriters/url";
 import { ScramjetContext } from "@/shared";
+import { _URL } from "./snapshot";
 
 export const htmlRules: {
 	[key: string]: "*" | string[] | ((...any: any[]) => string | null);
@@ -10,12 +10,14 @@ export const htmlRules: {
 }[] = [
 	{
 		fn: (value, context, meta) => {
-			return rewriteUrl(value, context, meta);
+			return rewriteUrl(value, context, meta, {
+				navigateType: "location",
+			});
 		},
 
 		// url rewrites
-		src: ["embed", "script", "img", "frame", "source", "input", "track"],
-		href: ["a", "link", "area", "use", "image"],
+		src: ["embed", "script", "img", "frame", "input", "track"],
+		href: ["a", "link", "area", "image"],
 		data: ["object"],
 		action: ["form"],
 		formaction: ["button", "input", "textarea", "submit"],
@@ -24,9 +26,10 @@ export const htmlRules: {
 	},
 	{
 		fn: (value, context, meta) => {
-			let url = rewriteUrl(value, context, meta);
-			// if (meta.topFrameName)
-			// 	url += `?topFrame=${meta.topFrameName}&parentFrame=${meta.parentFrameName}`;
+			const url = rewriteUrl(value, context, meta, {
+				topFrame: meta.topFrameName,
+				parentFrame: meta.parentFrameName,
+			});
 
 			return url;
 		},
@@ -34,7 +37,7 @@ export const htmlRules: {
 	},
 	{
 		// is this a good idea?
-		fn: (value, context, meta) => {
+		fn: (_value, _context, _meta) => {
 			return null;
 		},
 		sandbox: ["iframe"],
@@ -49,7 +52,7 @@ export const htmlRules: {
 
 			return rewriteUrl(value, context, meta);
 		},
-		src: ["video", "audio"],
+		src: ["video", "audio", "source"],
 	},
 	{
 		fn: () => "",
@@ -78,10 +81,18 @@ export const htmlRules: {
 				context,
 				{
 					// for srcdoc origin is the origin of the page that the iframe is on. base and path get dropped
-					origin: new URL(meta.origin.origin),
-					base: new URL(meta.origin.origin),
+					origin: new _URL(meta.origin.origin),
+					base: new _URL(meta.origin.origin),
+					topFrameName: meta.topFrameName,
+					parentFrameName: meta.parentFrameName,
+					referrerPolicy: meta.referrerPolicy,
 				},
-				true
+				{
+					loadScripts: true,
+					inline: true,
+					source: meta.origin.href,
+					apisource: "set HTMLIFrameElement.prototype.srcdoc",
+				}
 			),
 
 		// srcdoc
@@ -99,5 +110,28 @@ export const htmlRules: {
 			else return value;
 		},
 		target: ["a", "base"],
+	},
+	{
+		// svg elements with an href property
+		fn: (value, context, meta) => {
+			// #id values are not rewritten
+			if (value.startsWith("#")) return value;
+			return rewriteUrl(value, context, meta);
+		},
+		href: [
+			"use",
+			"textPath",
+			"mpath",
+			"feImage",
+			"animate",
+			"animateMotion",
+			"animateTransform",
+			"set",
+			"discard",
+			"linearGradient",
+			"radialGradient",
+			"pattern",
+			"filter",
+		],
 	},
 ];

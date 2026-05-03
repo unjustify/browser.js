@@ -1,60 +1,63 @@
-import { css, type ComponentContext } from "dreamland/core";
-import type { Tab } from "../../Tab";
-import { setContextMenu } from "../Menu";
+import { css, type FC } from "dreamland/core";
+import type { Tab } from "../../Tab/Tab";
+import { setContextMenu } from "@components/Menu";
 import { iconClose, iconDuplicate, iconNew, iconRefresh } from "../../icons";
-import { browser, forceScreenshot } from "../../Browser";
-import { Icon } from "../Icon";
-import { activeTooltips, fastClose, TabTooltip } from "./TabTooltip";
+import { Icon } from "@components/Icon";
+import { tabsService } from "../..";
 
 export function DragTab(
-	this: {
-		tooltipActive: boolean;
-		tooltipAnimate: boolean;
-	},
-	props: {
-		active: boolean;
-		id: number;
-		tab: Tab;
-		mousedown: (e: MouseEvent) => void;
-		destroy: () => void;
-		transitionend: () => void;
-	},
-	cx: ComponentContext
+	this: FC<
+		{
+			active: boolean;
+			id: string;
+			tab: Tab;
+			mousedown: (e: MouseEvent) => void;
+			mouseover: () => void;
+			destroy: () => void;
+			transitionend: () => void;
+		},
+		{
+			tooltipActive: boolean;
+			tooltipAnimate: boolean;
+			tooltipHovered: boolean;
+		}
+	>
 ) {
 	this.tooltipActive = false;
-	cx.mount = () => {
-		setContextMenu(cx.root, [
+	this.cx.mount = () => {
+		setContextMenu(this.root, [
 			{
 				label: "New tab to the right",
 				icon: iconNew,
 				action: () => {
-					browser.newTabRight(props.tab);
+					tabsService.newTabRight(this.tab);
 				},
 			},
 			{
 				label: "Reload",
 				icon: iconRefresh,
 				action: () => {
-					props.tab.frame.reload();
+					this.tab.frame.reload();
 				},
 			},
 			{
 				label: "Duplicate",
 				icon: iconDuplicate,
 				action: () => {
-					browser.newTabRight(props.tab, props.tab.url);
+					tabsService.newTabRight(this.tab, this.tab.url);
 				},
 			},
 			{
 				label: "Close Tab",
 				icon: iconClose,
 				action: () => {
-					props.destroy();
+					this.destroy();
 				},
 			},
 		]);
 
-		cx.root.animate(
+		// Open-tab animation: expands the tab container from width 0 to full computed width.
+		this.root.animate(
 			[
 				{
 					width: "0px",
@@ -62,7 +65,8 @@ export function DragTab(
 				{},
 			],
 			{
-				duration: 100,
+				duration: 200,
+				easing: "cubic-bezier(.25,.5,0,1.15)",
 				fill: "forwards",
 			}
 		);
@@ -73,88 +77,68 @@ export function DragTab(
 	return (
 		<div
 			style="z-index: 0;"
-			class="tab"
-			data-id={props.id}
+			class={use(this.tooltipHovered).map((hovered) =>
+				hovered ? "tab hovered" : "tab"
+			)}
+			data-id={this.id}
 			on:transitionend={() => {
-				cx.root.style.transition = "";
-				cx.root.style.zIndex = "0";
-				props.transitionend();
+				// Clears programmatically assigned move transition/z-index after tab translate animation ends.
+				this.root.style.transition = "";
+				this.root.style.zIndex = "0";
+				this.transitionend();
 			}}
 		>
 			<div
 				class="hover-area"
 				on:mousedown={(e: MouseEvent) => {
-					props.mousedown(e);
+					this.mousedown(e);
 					e.stopPropagation();
 					e.preventDefault();
 				}}
-				on:contextmenu={() => {
-					if (hoverTimeout) clearTimeout(hoverTimeout);
-					this.tooltipActive = false;
-				}}
-				on:mouseenter={() => {
-					forceScreenshot(props.tab);
-					if (hoverTimeout) clearTimeout(hoverTimeout);
-
-					if (activeTooltips > 0) {
-						// skip delay
-						fastClose();
-						this.tooltipAnimate = true;
-						this.tooltipActive = true;
-					} else {
-						hoverTimeout = window.setTimeout(() => {
-							this.tooltipActive = true;
-						}, 500);
-					}
-				}}
-				on:mouseleave={(e: MouseEvent) => {
-					const relatedTarget = e.relatedTarget as Node | null;
-					if (relatedTarget && cx.root.contains(relatedTarget)) {
-						// don't dismiss if hovering over the close button, even though that takes focus away from hover-area
-						return;
-					}
-					if (hoverTimeout) clearTimeout(hoverTimeout);
-					this.tooltipActive = false;
-				}}
-			></div>
-			<TabTooltip
-				tab={props.tab}
-				active={use(this.tooltipActive)}
-				animate={use(this.tooltipAnimate)}
-			/>
-			<div
-				class="dragroot"
-				style="position: unset;"
 				on:auxclick={(e: MouseEvent) => {
 					if (e.button === 1) {
-						props.destroy();
+						this.destroy();
 					}
 				}}
-			>
-				<div class={use(props.active).map((x) => `main ${x ? "active" : ""}`)}>
-					{use(props.tab.icon).andThen(<img src={use(props.tab.icon)} />)}
-					<span>{use(props.tab.title)}</span>
+				on:mouseenter={() => {
+					this.tooltipHovered = true;
+					this.mouseover();
+				}}
+				on:mouseleave={() => {
+					this.tooltipHovered = false;
+				}}
+			></div>
+			<div class="dragroot" style="position: unset;">
+				<div class={use(this.active).map((x) => (x ? "main active" : "main"))}>
+					{use(this.tab.icon).and(<img src={use(this.tab.icon)} />)}
+					<span>{use(this.tab.title)}</span>
 					<button
 						class="close"
 						on:click={(e: MouseEvent) => {
 							e.stopPropagation();
-							props.destroy();
+							this.destroy();
+						}}
+						on:auxclick={(e: MouseEvent) => {
+							e.stopPropagation();
+							this.destroy();
 						}}
 						on:contextmenu={(e: MouseEvent) => {
 							e.preventDefault();
+							e.stopPropagation();
+						}}
+						on:mouseenter={(e: MouseEvent) => {
+							this.mouseover();
 							e.stopPropagation();
 						}}
 					>
 						<Icon icon={iconClose} />
 					</button>
 				</div>
-				{/* <div class="belowcontainer">
-						{use(s.active).andThen(<div class="below"></div>)}
-					</div> */}
 			</div>
 		</div>
 	);
 }
+
 DragTab.style = css`
 	:scope {
 		display: inline-block;
@@ -166,6 +150,10 @@ DragTab.style = css`
 		--tab-active-border-radius-neg: -10px;
 
 		--tab-selected-textcolor: var(--toolbar_text);
+	}
+
+	:global(*) > :scope:has(:hover) .hover-area {
+		anchor-name: --hovered-tab;
 	}
 
 	.hover-area {
@@ -184,7 +172,7 @@ DragTab.style = css`
 
 		color: var(--tab_background_text);
 
-		border-radius: 4px;
+		border-radius: var(--radius);
 		padding: 7px 8px;
 
 		background: var(--background_tab_inactive);

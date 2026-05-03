@@ -1,30 +1,43 @@
 import { ScramjetClient } from "@client/index";
 import { SCRAMJETCLIENT } from "@/symbols";
-import { rewriteUrl } from "@rewriters/url";
+import { String } from "@/shared/snapshot";
 
 export default function (client: ScramjetClient) {
 	client.Proxy("window.open", {
 		apply(ctx) {
-			if (ctx.args[0])
-				ctx.args[0] = rewriteUrl(ctx.args[0], client.context, client.meta);
+			// undefined opens an about:blank window, pass through
+			if (typeof ctx.args[0] !== "undefined") {
+				const url = String(ctx.args[0]);
+				// blank also opens an about:blank window
+				if (url !== "") {
+					// note that null or anything else will *not* open an about:blank window
+					ctx.args[0] = client.rewriteUrl(url);
+				}
+			}
 
-			if (ctx.args[1] === "_top" || ctx.args[1] === "_unfencedTop")
-				ctx.args[1] = client.meta.topFrameName;
-			if (ctx.args[1] === "_parent") ctx.args[1] = client.meta.parentFrameName;
+			if (typeof ctx.args[1] !== "undefined" && ctx.args[1] !== null) {
+				let target = String(ctx.args[1]);
+
+				if (target === "_top" || target === "_unfencedTop") {
+					target = client.meta.topFrameName;
+				}
+				if (target === "_parent") {
+					target = client.meta.parentFrameName;
+				}
+
+				ctx.args[1] = target;
+			}
 
 			const realwin = ctx.call();
 
 			if (!realwin) return ctx.return(realwin);
 
-			if (SCRAMJETCLIENT in realwin) {
-				return ctx.return(realwin[SCRAMJETCLIENT].global);
-			} else {
-				const newclient = new ScramjetClient(realwin, client.init);
-				// hook the opened window
-				newclient.hook();
-
-				return ctx.return(newclient.global);
+			if (!(SCRAMJETCLIENT in realwin)) {
+				// i don't believe it's possible for a just-opened window to already have scramjet loaded but just in case
+				client.init.hookSubcontext(realwin);
 			}
+
+			return realwin;
 		},
 	});
 

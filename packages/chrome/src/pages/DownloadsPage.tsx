@@ -1,29 +1,29 @@
-import { css } from "dreamland/core";
-import type { Tab } from "../Tab";
-import { browser } from "../Browser";
+import { css, type FC } from "dreamland/core";
+import type { Tab } from "../Tab/Tab";
 import { iconLink, iconClose, iconFolder } from "../icons";
-import { Icon } from "../components/Icon";
-import { formatBytes } from "../utils";
-import { defaultFaviconUrl } from "../assets/favicon";
+import { Icon } from "@components/Icon";
+import { formatBytes } from "../util";
+import { Favicon } from "@components/Favicon";
+import { downloadsService, tabsService } from "..";
 
-export function DownloadsPage(props: { tab: Tab }) {
+export function DownloadsPage(this: FC<{ tab: Tab }>) {
 	return (
 		<div>
 			<nav>
 				<h1>Downloads</h1>
 			</nav>
 			<ul class="entries">
-				{use(browser.globalDownloadHistory).mapEach((entry) => {
+				{use(downloadsService.globalDownloadHistory).mapEach((entry) => {
 					const url = new URL(entry.url);
 					return (
 						<li
 							class="entry"
 							on:click={() => {
-								browser.newTab(url);
+								tabsService.newTab(url);
 							}}
 						>
 							<span class="inner">
-								<img src={defaultFaviconUrl} alt="favicon" />
+								<Favicon domain={url.hostname} size="medium"></Favicon>
 								<div class="text">
 									<span class="title">{entry.filename}</span>
 									<span class="url">{url.hostname}</span>

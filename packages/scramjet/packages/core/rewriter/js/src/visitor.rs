@@ -359,6 +359,34 @@ where
 		}
 	}
 
+	fn handle_assignment_target_member(&mut self, target: &AssignmentTarget<'data>) {
+		match target {
+			AssignmentTarget::StaticMemberExpression(s) => {
+				// window.location = ...
+				if UNSAFE_GLOBALS.contains(&s.property.name.as_str()) {
+					self.jschanges.add(rewrite!(
+						s.property.span(),
+						RewriteProperty {
+							ident: s.property.name
+						}
+					));
+				}
+
+				// walk the left hand side of the member expression (`window` for the `window.location = ...` case)
+				walk::walk_expression(self, &s.object);
+			}
+			AssignmentTarget::ComputedMemberExpression(s) => {
+				// window["location"] = ...
+				self.handle_computed_member_expression(s);
+				// `window`
+				walk::walk_expression(self, &s.object);
+				// `"location"`
+				walk::walk_expression(self, &s.expression);
+			}
+			_ => {}
+		}
+	}
+
 	fn handle_for_of_in(&mut self, left: &ForStatementLeft<'data>, right: &Expression<'data>, body: &Statement<'data>) {
     	let mut restids: Vec<Atom<'data>> = Vec::new();
 		let mut location_assigned: bool = false;
@@ -374,28 +402,8 @@ where
 					}
 				}
 
-				// TODO: this logic is duplicated in visit_assignment_target. can it be merged?
-				AssignmentTarget::StaticMemberExpression(s) => {
-					// window.location = ...
-					if UNSAFE_GLOBALS.contains(&s.property.name.as_str()) {
-						self.jschanges.add(rewrite!(
-							s.property.span(),
-							RewriteProperty {
-								ident: s.property.name
-							}
-						));
-					}
-
-					// walk the left hand side of the member expression (`window` for the `window.location = ...` case)
-					walk::walk_expression(self, &s.object);
-				}
-				AssignmentTarget::ComputedMemberExpression(s) => {
-					// window["location"] = ...
-					self.handle_computed_member_expression(s);
-					// `window`
-					walk::walk_expression(self, &s.object);
-					// `"location"`
-					walk::walk_expression(self, &s.expression);
+				AssignmentTarget::StaticMemberExpression(_) | AssignmentTarget::ComputedMemberExpression(_) => {
+					self.handle_assignment_target_member(target);
 				}
 				AssignmentTarget::ObjectAssignmentTarget(o) => {
 					self.recurse_object_assignment_target(o, &mut restids, &mut location_assigned);
@@ -438,6 +446,7 @@ where
 			}
 		}
 		walk::walk_expression(self, &right);
+		walk::walk_statement(self, &body);
 	}
 
 	fn scramitize(&mut self, span: Span) {
@@ -457,8 +466,24 @@ where
 	}
 
 	fn visit_new_expression(&mut self, it: &NewExpression<'data>) {
-		// ??
-		// self.walk_member_expression(&it.callee);
+		match &it.callee {
+			Expression::StaticMemberExpression(_) | Expression::Identifier(_) => {
+				// new top(), new location.top(), etc
+				// rewriting to new $wrap(location).top() WILL change semantics
+				// so it has to be wrapped to new ($wrap(location).top)()
+				// TODO: skip paren wrap if it's determined to be safe
+				self.jschanges.add(rewrite!(it.callee.span(), WrapNew));
+				walk::walk_expression(self, &it.callee);
+			}
+			Expression::ComputedMemberExpression(c) => {
+				walk::walk_expression(self, &c.expression);
+			}
+			_=>{
+				// any other kind of expression
+				// new (f(location))()
+				walk::walk_expression(self, &it.callee);
+			}
+		}
 		walk::walk_arguments(self, &it.arguments);
 	}
 
@@ -469,22 +494,10 @@ where
 				// you could break this with ["postMessage"] etc
 				// however this code only exists because of recaptcha whatever
 				// and it would slow down js execution a lot
-				if s.property.name == "postMessage" {
-					// include the "postMessage" and the dot before it in the inner span
-					// if `postMessage?.` remove the dot and the question mark
-					let offset = if s.optional { 2 } else { 1 };
+				if s.property.name == "postMessage" && !matches!(&s.object, Expression::Super(_)) {
+					self.jschanges.add(rewrite!(s.object.span(), WrapPostMessage));
 
-					self.jschanges.add(rewrite!(s.span, WrapPostMessage {
-						inner: Span::new(s.property.span.start - offset, s.property.span.end),
-					}));
-					// if s.property.name == "postMessage" {
-					// 					self.jschanges.add(rewrite!(s.property.span, SetRealmFn));
-
-					// 					walk::walk_expression(self, &s.object);
-					// 					return; // unwise to walk the rest of the tree
-					// 				}
-
-					// walk::walk_expression(self, &s.object);
+					walk::walk_expression(self, &s.object);
 					return; // unwise to walk the rest of the tree
 				}
 
@@ -844,64 +857,41 @@ where
 					));
 				}
 			}
-			AssignmentTarget::StaticMemberExpression(s) => {
-				// window.location = ...
-				if UNSAFE_GLOBALS.contains(&s.property.name.as_str()) {
-					self.jschanges.add(rewrite!(
-						s.property.span(),
-						RewriteProperty {
-							ident: s.property.name
-						}
-					));
-				}
-
-				// walk the left hand side of the member expression (`window` for the `window.location = ...` case)
-				walk::walk_expression(self, &s.object);
-			}
-			AssignmentTarget::ComputedMemberExpression(s) => {
-				// window["location"] = ...
-				self.handle_computed_member_expression(s);
-				// `window`
-				walk::walk_expression(self, &s.object);
-				// `"location"`
-				walk::walk_expression(self, &s.expression);
+			AssignmentTarget::StaticMemberExpression(_) | AssignmentTarget::ComputedMemberExpression(_) => {
+				self.handle_assignment_target_member(&it.left);
 			}
 			AssignmentTarget::ObjectAssignmentTarget(o) => {
-				if !self.flags.destructure_rewrites {
+				if self.flags.destructure_rewrites {
+					let mut restids: Vec<Atom<'data>> = Vec::new();
+					let mut location_assigned: bool = false;
+					self.recurse_object_assignment_target(o, &mut restids, &mut location_assigned);
+
+					if restids.len() > 0 || location_assigned {
+						self.jschanges.add(rewrite!(
+							it.span,
+							WrapObjectAssignment {
+								restids,
+								location_assigned
+							}
+						));
+					}
 					return;
 				}
-
-				let mut restids: Vec<Atom<'data>> = Vec::new();
-				let mut location_assigned: bool = false;
-				self.recurse_object_assignment_target(o, &mut restids, &mut location_assigned);
-
-				if restids.len() > 0 || location_assigned {
-					self.jschanges.add(rewrite!(
-						it.span,
-						WrapObjectAssignment {
-							restids,
-							location_assigned
-						}
-					));
-				}
-				return;
 			}
 			AssignmentTarget::ArrayAssignmentTarget(a) => {
-				if !self.flags.destructure_rewrites {
-					return;
-				}
-
-				let mut restids: Vec<Atom<'data>> = Vec::new();
-				let mut location_assigned: bool = false;
-				self.recurse_array_assignment_target(a, &mut restids, &mut location_assigned);
-				if restids.len() > 0 || location_assigned {
-					self.jschanges.add(rewrite!(
-						it.span,
-						WrapObjectAssignment {
-							restids,
-							location_assigned
-						}
-					));
+				if self.flags.destructure_rewrites {
+					let mut restids: Vec<Atom<'data>> = Vec::new();
+					let mut location_assigned: bool = false;
+					self.recurse_array_assignment_target(a, &mut restids, &mut location_assigned);
+					if restids.len() > 0 || location_assigned {
+						self.jschanges.add(rewrite!(
+							it.span,
+							WrapObjectAssignment {
+								restids,
+								location_assigned
+							}
+						));
+					}
 				}
 			}
 			_ => {}

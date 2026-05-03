@@ -3,10 +3,6 @@ name: CI
 on:
   push:
     paths-ignore: &ci_ignore_paths
-      - ".github/workflows/**"
-      - "assets/**"
-      - "scripts/**"
-      # Editor configs
       - ".zed/**"
       - ".vscode/**"
       # Docs
@@ -22,6 +18,9 @@ on:
     paths-ignore: *ci_ignore_paths
   workflow_dispatch:
 
+env:
+  WASM_BINDGEN_VERSION: "0.2.105"
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -31,19 +30,39 @@ jobs:
     name: Check Version
     runs-on: ubuntu-latest
     outputs:
-      version_changed: ${{ steps.check.outputs.exit_code }}
-      new_version: ${{ steps.check.outputs.exit_code }}
+      scramjet_version_changed: ${{ steps.check-scramjet.outputs.version_changed }}
+      scramjet_new_version: ${{ steps.check-scramjet.outputs.new_version }}
+      controller_version_changed: ${{ steps.check-scramjet-controller.outputs.version_changed }}
+      controller_new_version: ${{ steps.check-scramjet-controller.outputs.new_version }}
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Check the version
-        id: check
+      - name: Check the version (scramjet/core)
+        id: check-scramjet
         run: |
-          CURRENT_VERSION=$(jq -r .version package.json)
+          CURRENT_VERSION=$(jq -r .version packages/core/package.json)
           echo "Current version: $CURRENT_VERSION"
           LATEST_VERSION=$(npm view @mercuryworkshop/scramjet versions --json | jq -r '.[-1]' || echo "0.0.0")
+          echo "Latest NPM version: $LATEST_VERSION"
+
+          if [ "$LATEST_VERSION" != "$CURRENT_VERSION" ];
+          then
+            echo "Version changed"
+            echo "version_changed=true" >> "$GITHUB_OUTPUT"
+            echo "new_version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
+          else
+            echo "Version not changed"
+            echo "version_changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check the version (scramjet/controller)
+        id: check-scramjet-controller
+        run: |
+          CURRENT_VERSION=$(jq -r .version packages/controller/package.json)
+          echo "Current version: $CURRENT_VERSION"
+          LATEST_VERSION=$(npm view @mercuryworkshop/scramjet-controller versions --json | jq -r '.[-1]' || echo "0.0.0")
           echo "Latest NPM version: $LATEST_VERSION"
 
           if [ "$LATEST_VERSION" != "$CURRENT_VERSION" ];
@@ -66,69 +85,54 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: latest
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "24"
           cache: "pnpm"
 
       - name: Install pnpm dependencies
         run: pnpm install
 
-      - name: Cache rewriter build artifacts
-        uses: actions/cache@v4
-        id: rewriter-cache
+      - name: Setup Rewriter Toolchain
+        uses: ./.github/actions/setup-rewriter-toolchain
         with:
-          path: |
-            rewriter/wasm/out
-            dist/scramjet.wasm.wasm
-          key: rewriter-release-${{ hashFiles('rewriter/wasm/Cargo.toml', 'rewriter/wasm/src/**/*.rs', 'rewriter/wasm/build.sh') }}
-          restore-keys: |
-            rewriter-release-
-
-      - name: Cache Rust dependencies
-        if: steps.rewriter-cache.outputs.cache-hit != 'true'
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: "rewriter"
-          cache-all-crates: true
-
-      - name: Install wbg
-        if: steps.rewriter-cache.outputs.cache-hit != 'true'
-        uses: jetli/wasm-bindgen-action@v0.2.0
-        with:
-          version: "0.2.100"
-
-      - name: Setup Binaryen
-        if: steps.rewriter-cache.outputs.cache-hit != 'true'
-        uses: Aandreba/setup-binaryen@v1.0.0
-        with:
-          token: ${{ github.token }}
-
-      - name: Setup wasm-snip
-        if: steps.rewriter-cache.outputs.cache-hit != 'true'
-        run: "cargo install --git https://github.com/r58playz/wasm-snip"
+          wasm-bindgen-version: ${{ env.WASM_BINDGEN_VERSION }}
+          rewriter-path: packages/core/rewriter
+          github-token: ${{ github.token }}
 
       - name: Pack Scramjet
         run: pnpm pack
+        working-directory: packages/core
 
-      - name: Upload Artifact (pnpm pack)
-        uses: actions/upload-artifact@v4
-        with:
-          name: packaged-scramjet
-          path: mercuryworkshop-scramjet-*.tgz
+      - name: Pack Scramjet Controller
+        run: pnpm pack
+        working-directory: packages/controller
 
-      - name: Upload Artifact (dist)
+      - name: Upload Artifact (scramjet/core)
         uses: actions/upload-artifact@v4
         with:
           name: scramjet
-          path: |
-            dist/*.js
-            dist/*.js.map
-            dist/*.wasm
+          path: packages/core/dist/*
+
+      - name: Upload Artifact (scramjet/core) (packaged)
+        uses: actions/upload-artifact@v4
+        with:
+          name: scramjet-package
+          path: packages/core/mercuryworkshop-scramjet-*.tgz
+
+      - name: Upload Artifact (scramjet/controller)
+        uses: actions/upload-artifact@v4
+        with:
+          name: scramjet-controller
+          path: packages/controller/dist/*
+
+      - name: Upload Artifact (scramjet/controller) (packaged)
+        uses: actions/upload-artifact@v4
+        with:
+          name: scramjet-controller-package
+          path: packages/controller/mercuryworkshop-scramjet-controller-*.tgz
 
   package-validation:
     name: Validate Package Structure
@@ -141,13 +145,11 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: latest
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "24"
           cache: "pnpm"
 
       - name: Install dependencies
@@ -156,48 +158,70 @@ jobs:
       - name: Get artifacts
         uses: actions/download-artifact@v4
         with:
-          name: packaged-scramjet
-          path: .
+          name: scramjet-package
+          path: packages/core
 
       - name: Extract package
         run: tar xvf mercuryworkshop-scramjet-*.tgz package --strip-components=1
+        working-directory: packages/core
 
       - name: Run package validation tests
         run: pnpm test:package
+        working-directory: packages/core
+
   tests:
     name: Run Scramjet Tests
     runs-on: ubuntu-latest
     needs: [build, package-validation]
-
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: .playwright-browsers
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: latest
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "24"
           cache: "pnpm"
 
       - name: Install dependencies
         run: pnpm install
 
-      - name: Get artifacts
+      - name: Get artifacts (scramjet/core)
         uses: actions/download-artifact@v4
         with:
           name: scramjet
-          path: dist
+          path: packages/core/dist
 
-      - name: Install Playwright Browsers
-        run: npx playwright install --with-deps
+      - name: Get artifacts (scramjet/controller)
+        uses: actions/download-artifact@v4
+        with:
+          name: scramjet-controller
+          path: packages/controller/dist
 
-      - name: Run Playwright tests
-        run: pnpm test:integration
+      - name: Cache Playwright browsers
+        id: pw-browsers-cache
+        uses: actions/cache@v4
+        with:
+          path: .playwright-browsers
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+
+      - name: Install Playwright Chromium
+        if: steps.pw-browsers-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+        working-directory: packages/runway
+
+      - name: Run Runway tests
+        run: OMIT_WPT=1 pnpm test --parallel 4
+        working-directory: packages/runway
 
   rewritertests:
     name: "Run Rewriter Tests"
@@ -210,30 +234,20 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Cache rewriter build artifacts
-        uses: actions/cache@v4
-        id: rewriter-cache
-        with:
-          path: |
-            rewriter/wasm/out
-            dist/scramjet.wasm.wasm
-          key: rewriter-release-${{ hashFiles('rewriter/wasm/Cargo.toml', 'rewriter/wasm/src/**/*.rs', 'rewriter/wasm/build.sh') }}
-          restore-keys: |
-            rewriter-release-
-
-      - name: Cache Rust dependencies
+      - name: Cache Rust compilation
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: "rewriter"
+          workspaces: "packages/core/rewriter -> target"
           cache-all-crates: true
+          shared-key: "rewriter"
 
       - name: Run Tests
-        run: cd rewriter/native && cargo test
+        run: cd packages/core/rewriter/native && cargo test
 
   upload:
     name: Upload release
     runs-on: ubuntu-latest
-    needs: [version-check, build, package-validation, rewritertests, tests]
+    needs: [version-check, build, package-validation, tests, rewritertests]
     permissions: write-all
     if: github.ref == 'refs/heads/main'
 
@@ -248,7 +262,13 @@ jobs:
       - name: Get artifacts
         uses: actions/download-artifact@v4
         with:
-          name: packaged-scramjet
+          name: scramjet-package
+          path: .
+
+      - name: Get artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: scramjet-controller-package
           path: .
 
       - name: Release unstable build to GitHub
@@ -258,114 +278,130 @@ jobs:
           tag: latest
           commit: main
           body: "${{ github.event.head_commit.url }} ${{ github.event.head_commit.message }}"
-          artifacts: "mercuryworkshop-scramjet-*.tgz"
+          artifacts: "mercuryworkshop-scramjet-*.tgz,mercuryworkshop-scramjet-controller-*.tgz"
           prerelease: true
 
-      - name: Release tagged version to GitHub
-        if: needs.version-check.outputs.version_changed == 'true'
+      - name: Release tagged version to GitHub (scramjet/core)
+        if: needs.version-check.outputs.scramjet_version_changed == 'true'
         uses: ncipollo/release-action@v1
         with:
-          name: "${{ needs.version-check.outputs.new_version }}"
-          tag: "v${{ needs.version-check.outputs.new_version }}"
+          name: "${{ needs.version-check.outputs.scramjet_new_version }}"
+          tag: "v${{ needs.version-check.outputs.scramjet_new_version }}"
           commit: main
           body: "${{ github.event.head_commit.url }} ${{ github.event.head_commit.message }}"
           artifacts: "mercuryworkshop-scramjet-*.tgz"
 
+      - name: Release tagged version to GitHub (scramjet/controller)
+        if: needs.version-check.outputs.controller_version_changed == 'true'
+        uses: ncipollo/release-action@v1
+        with:
+          name: "${{ needs.version-check.outputs.controller_new_version }}-controller"
+          tag: "v${{ needs.version-check.outputs.controller_new_version }}-controller"
+          commit: main
+          body: "${{ github.event.head_commit.url }} ${{ github.event.head_commit.message }}"
+          artifacts: "mercuryworkshop-scramjet-controller-*.tgz"
+
   publish:
     name: Publish Scramjet to NPM
     runs-on: ubuntu-latest
-    needs: [version-check, build, package-validation, rewritertests, tests]
+    needs: [version-check, build, package-validation, tests, rewritertests]
     permissions: write-all
-    if: ${{ (needs.version-check.outputs.version_changed == 'true') && (github.ref == 'refs/heads/main') }}
+    if: ${{ (github.ref == 'refs/heads/main') && (needs.version-check.outputs.scramjet_version_changed == 'true' || needs.version-check.outputs.controller_version_changed == 'true') }}
 
     steps:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
-      - name: Get artifacts
+      - name: Get artifacts (scramjet/core)
         uses: actions/download-artifact@v4
         with:
-          name: packaged-scramjet
+          name: scramjet-package
           path: .
 
-      - name: Extract package
-        run: tar xvf mercuryworkshop-scramjet-*.tgz package --strip-components=1
+      - name: Get artifacts (scramjet/controller)
+        uses: actions/download-artifact@v4
+        with:
+          name: scramjet-controller-package
+          path: .
 
-      - name: Publish
-        run: npm publish --access public --no-git-checks
+      - name: Update npm
+        run: npm install -g npm@latest
 
-  pages:
-    name: Upload to Github Pages
+      - name: Publish Scramjet
+        if: needs.version-check.outputs.scramjet_version_changed == 'true'
+        run: npm publish mercuryworkshop-scramjet-${{ needs.version-check.outputs.scramjet_new_version }}.tgz --access public --no-git-checks
+
+      - name: Publish Scramjet Controller
+        if: needs.version-check.outputs.controller_version_changed == 'true'
+        run: npm publish mercuryworkshop-scramjet-controller-${{ needs.version-check.outputs.controller_new_version }}.tgz --access public --no-git-checks
+
+  frontend:
+    name: Build Frontend
     runs-on: ubuntu-latest
-    needs: [build, package-validation, rewritertests, tests]
     permissions: write-all
-    if: github.ref == 'refs/heads/main'
+    needs: [build, package-validation]
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: latest
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "24"
           cache: "pnpm"
 
       - name: Install dependencies
         run: pnpm install
 
-      - name: Get artifacts
+      - name: Get artifacts (scramjet/core)
         uses: actions/download-artifact@v4
         with:
           name: scramjet
-          path: dist
+          path: packages/core/dist
 
-      - name: Setup GitHub CLI
-        run: |
-          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-          sudo apt update
-          sudo apt install gh -y
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Get artifacts (scramjet/controller)
+        uses: actions/download-artifact@v4
+        with:
+          name: scramjet-controller
+          path: packages/controller/dist
 
-      - name: Download existing TypeDoc history
-        run: bash ./ci/download-existing-docs.sh
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Build Frontend
+        run: VITE_WISP_URL="wss://anura.pro/" pnpm build
+        working-directory: packages/demo
 
-      - name: Build TypeDoc documentation with versioning
-        continue-on-error: true
-        run: bash ./ci/build-docs.sh
-
-      - name: Upload TypeDoc user-facing artifact
+      - name: Upload Artifact (frontend)
         uses: actions/upload-artifact@v4
         with:
-          name: typedoc-current
-          path: typedoc-*.tar.gz
+          name: frontend
+          path: ./packages/demo/dist
 
-      - name: Upload TypeDoc dev-facing artifact
-        uses: actions/upload-artifact@v4
+  pages:
+    name: Upload to Github Pages
+    runs-on: ubuntu-latest
+    needs: [frontend, tests, rewritertests]
+    permissions: write-all
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Get artifacts
+        uses: actions/download-artifact@v4
         with:
-          name: typedoc-current-dev
-          path: typedoc-*.tar.gz-dev
-
-      - name: Build static assets
-        run: bash ./ci/build-static.sh
+          name: frontend
+          path: .
 
       - name: Upload pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: "./staticbuild"
+          path: .
 
       - name: Deploy to github
         id: deployment

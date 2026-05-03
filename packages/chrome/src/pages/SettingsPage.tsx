@@ -1,13 +1,12 @@
-import { css, type Component } from "dreamland/core";
-import type { Tab } from "../Tab";
+import { css, type Component, type FC } from "dreamland/core";
+import type { Tab } from "../Tab/Tab";
 import type { IconifyIcon } from "@iconify/types";
 import { versionInfo } from "@mercuryworkshop/scramjet";
-import { Icon } from "../components/Icon";
-import { browser } from "../Browser";
-import { Checkbox } from "../components/Checkbox";
-import { Button } from "../components/Button";
-import { Input } from "../components/Input";
-import { AVAILABLE_SEARCH_ENGINES } from "../components/Omnibar/suggestions";
+import { Icon } from "@components/Icon";
+import { Checkbox } from "@components/Checkbox";
+import { Button } from "@components/Button";
+import { Input } from "@components/Input";
+import { AVAILABLE_SEARCH_ENGINES } from "@components/Omnibar/suggestions";
 import { THEMES } from "../themes";
 
 import {
@@ -16,13 +15,14 @@ import {
 	iconExtension,
 	iconPrivacy,
 	iconAbout,
+	iconBrush,
+	iconError,
 } from "../icons";
+import { settingsService } from "..";
 
 export function SettingsPage(
-	this: { selected: string; searchQuery: string },
-	props: { tab: Tab }
+	this: FC<{ tab: Tab; selected: string }, { searchQuery: string }>
 ) {
-	this.selected = "general";
 	this.searchQuery = "";
 
 	const button = (id: string, icon: IconifyIcon, name: string) => {
@@ -32,6 +32,8 @@ export function SettingsPage(
 				class:active={use(this.selected).map((s) => s === id)}
 				on:click={() => {
 					this.selected = id;
+					// this.tab.url = new URL(`puter://settings/${id}`);
+					this.tab.history.push(new URL(`puter://settings/${id}`));
 				}}
 			>
 				<Icon icon={icon} />
@@ -40,9 +42,9 @@ export function SettingsPage(
 		);
 	};
 
-	const handleSearch = (e: Event) => {
-		this.searchQuery = (e.target as HTMLInputElement).value.toLowerCase();
-	};
+	use(this.selected).listen((s) => {
+		console.log("Selected settings category:", s);
+	});
 
 	return (
 		<div class="settings-page">
@@ -50,6 +52,7 @@ export function SettingsPage(
 				<h1>Settings</h1>
 				<nav class="navigation">
 					{button("general", iconSettings, "General")}
+					{button("appearance", iconBrush, "Appearance")}
 					{button("search", iconSearch, "Search")}
 					{button("privacy", iconPrivacy, "Privacy & Security")}
 					{button("extensions", iconExtension, "Extensions")}
@@ -58,11 +61,7 @@ export function SettingsPage(
 			</div>
 			<div class="content">
 				<div class="search-container">
-					<Input
-						placeholder="Search settings..."
-						value={this.searchQuery}
-						on:input={handleSearch}
-					/>
+					<Input placeholder="Search" value={use(this.searchQuery)} />
 				</div>
 				<div class="settings-content">
 					<h1>
@@ -76,14 +75,84 @@ export function SettingsPage(
 							<div class="settings-tab">
 								<section class="setting-section">
 									<div class="section-header">
-										<h3>Appearance</h3>
+										<h2>Startup</h2>
+									</div>
+									<div class="section-content">
+										<div class="setting-group">
+											<h4>When Browser Starts</h4>
+											<div class="radio-group">
+												<div class="radio-option">
+													<input
+														type="radio"
+														id="startup-new-tab"
+														name="startupPage"
+														value="new-tab"
+														checked={use(
+															settingsService.settings.startupPage
+														).map((v) => v === "new-tab")}
+														on:change={() => {
+															settingsService.settings.startupPage = "new-tab";
+														}}
+													/>
+													<label for="startup-new-tab">Open New Tab Page</label>
+												</div>
+												<div class="radio-option">
+													<input
+														type="radio"
+														id="startup-continue"
+														name="startupPage"
+														value="continue"
+														checked={use(
+															settingsService.settings.startupPage
+														).map((v) => v === "continue")}
+														on:change={() => {
+															settingsService.settings.startupPage = "continue";
+														}}
+													/>
+													<label for="startup-continue">
+														Continue where you left off
+													</label>
+												</div>
+											</div>
+										</div>
+									</div>
+								</section>
+
+								<section class="setting-section">
+									<div class="section-header">
+										<h2>Bookmarks</h2>
+									</div>
+									<div class="section-content">
+										<div class="setting-group">
+											<div class="checkbox-option">
+												<Checkbox
+													value={use(settingsService.settings.showBookmarksBar)}
+													id="show-bookmarks-bar"
+												/>
+												<label for="show-bookmarks-bar">
+													Always show bookmarks bar
+												</label>
+											</div>
+										</div>
+									</div>
+								</section>
+							</div>
+						) : null
+					)}
+
+					{/* Appearance Tab */}
+					{use(this.selected).map((selected) =>
+						selected === "appearance" ? (
+							<div class="settings-tab">
+								<section class="setting-section">
+									<div class="section-header">
+										<h2>Page Appearance</h2>
 										<p class="description">
-											Customize how the browser looks and feels
+											Control the appearance of websites you visit.
 										</p>
 									</div>
 									<div class="section-content">
 										<div class="setting-group">
-											<h4>Page Appearance</h4>
 											<div class="radio-group">
 												<div class="radio-option">
 													<input
@@ -91,9 +160,11 @@ export function SettingsPage(
 														id="appearance-system"
 														name="appearance"
 														value="system"
-														checked={browser.settings.appearance === "system"}
+														checked={
+															settingsService.settings.appearance === "system"
+														}
 														on:change={() => {
-															browser.settings.appearance = "system";
+															settingsService.settings.appearance = "system";
 														}}
 													/>
 													<label for="appearance-system">System Default</label>
@@ -104,9 +175,11 @@ export function SettingsPage(
 														id="appearance-dark"
 														name="appearance"
 														value="dark"
-														checked={browser.settings.appearance === "dark"}
+														checked={
+															settingsService.settings.appearance === "dark"
+														}
 														on:change={() => {
-															browser.settings.appearance = "dark";
+															settingsService.settings.appearance = "dark";
 														}}
 													/>
 													<label for="appearance-dark">Dark</label>
@@ -117,30 +190,137 @@ export function SettingsPage(
 														id="appearance-light"
 														name="appearance"
 														value="light"
-														checked={browser.settings.appearance === "light"}
+														checked={
+															settingsService.settings.appearance === "light"
+														}
 														on:change={() => {
-															browser.settings.appearance = "light";
+															settingsService.settings.appearance = "light";
 														}}
 													/>
 													<label for="appearance-light">Light</label>
 												</div>
 											</div>
 										</div>
-
+									</div>
+								</section>
+								<section class="setting-section">
+									<div class="section-header">
+										<h2>UI Density</h2>
+										<p class="description">
+											Adjust the spacing and sizing of UI elements.
+										</p>
+									</div>
+									<div class="section-content">
 										<div class="setting-group">
-											<h4>Color Theme</h4>
-											<p class="description">
-												Choose your preferred color scheme
-											</p>
+											<div class="radio-group">
+												<div class="radio-option">
+													<input
+														type="radio"
+														id="ui-dense"
+														name="ui-dense"
+														value="compact"
+														checked={
+															settingsService.settings.uiProfile === "compact"
+														}
+														on:change={() => {
+															settingsService.settings.uiProfile = "compact";
+														}}
+													/>
+													<label for="ui-dense">Compact</label>
+												</div>
+												<div class="radio-option">
+													<input
+														type="radio"
+														id="ui-default"
+														name="ui-dense"
+														value="default"
+														checked={
+															settingsService.settings.uiProfile === "default"
+														}
+														on:change={() => {
+															settingsService.settings.uiProfile = "default";
+														}}
+													/>
+													<label for="ui-default">Comfortable</label>
+												</div>
+												<div class="radio-option">
+													<input
+														type="radio"
+														id="ui-sparse"
+														name="ui-dense"
+														value="touch"
+														checked={
+															settingsService.settings.uiProfile === "touch"
+														}
+														on:change={() => {
+															settingsService.settings.uiProfile = "touch";
+														}}
+													/>
+													<label for="ui-sparse">Cozy</label>
+												</div>
+											</div>
+										</div>
+									</div>
+								</section>
+								<section class="setting-section">
+									<div class="section-header">
+										<h2>Browser Theme</h2>
+										<p class="description">
+											Customize the look of the browser.
+										</p>
+									</div>
+									<div class="section-content">
+										<div class="setting-group">
+											<br />
+											<h4>Dark</h4>
 											<div class="theme-grid">
-												{THEMES.map((theme) => (
+												{THEMES.filter(
+													(theme) => theme.appearance === "dark"
+												).map((theme) => (
 													<div
 														class="theme-card"
-														class:selected={use(browser.settings.themeId).map(
-															(id) => id === theme.id
-														)}
+														class:selected={use(
+															settingsService.settings.themeId
+														).map((id) => id === theme.id)}
 														on:click={() => {
-															browser.settings.themeId = theme.id;
+															settingsService.settings.themeId = theme.id;
+														}}
+													>
+														<div class="theme-preview">
+															<div
+																class="preview-toolbar"
+																style={`background: ${theme.preview.toolbar};`}
+															>
+																<div
+																	class="preview-field"
+																	style={`background: ${theme.preview.field};`}
+																></div>
+																<div
+																	class="preview-accent"
+																	style={`background: ${theme.preview.accent};`}
+																></div>
+															</div>
+														</div>
+														<div class="theme-info">
+															<h5>{theme.name}</h5>
+															<p>{theme.description}</p>
+														</div>
+													</div>
+												))}
+											</div>
+											<br />
+											<h4>Light</h4>
+											<div class="theme-grid">
+												{THEMES.filter(
+													(theme) => theme.appearance === "light"
+												).map((theme) => (
+													<div
+														class="theme-card"
+														class:selected={use(
+															settingsService.settings.themeId
+														).map((id) => id === theme.id)}
+														on:click={() => {
+															settingsService.settings.themeId = theme.id;
 														}}
 													>
 														<div class="theme-preview">
@@ -168,70 +348,6 @@ export function SettingsPage(
 										</div>
 									</div>
 								</section>
-
-								<section class="setting-section">
-									<div class="section-header">
-										<h3>Startup</h3>
-									</div>
-									<div class="section-content">
-										<div class="setting-group">
-											<h4>When Browser Starts</h4>
-											<div class="radio-group">
-												<div class="radio-option">
-													<input
-														type="radio"
-														id="startup-new-tab"
-														name="startupPage"
-														value="new-tab"
-														checked={use(browser.settings.startupPage).map(
-															(v) => v === "new-tab"
-														)}
-														on:change={() => {
-															browser.settings.startupPage = "new-tab";
-														}}
-													/>
-													<label for="startup-new-tab">Open New Tab Page</label>
-												</div>
-												<div class="radio-option">
-													<input
-														type="radio"
-														id="startup-continue"
-														name="startupPage"
-														value="continue"
-														checked={use(browser.settings.startupPage).map(
-															(v) => v === "continue"
-														)}
-														on:change={() => {
-															browser.settings.startupPage = "continue";
-														}}
-													/>
-													<label for="startup-continue">
-														Continue where you left off
-													</label>
-												</div>
-											</div>
-										</div>
-									</div>
-								</section>
-
-								<section class="setting-section">
-									<div class="section-header">
-										<h3>Bookmarks</h3>
-									</div>
-									<div class="section-content">
-										<div class="setting-group">
-											<div class="checkbox-option">
-												<Checkbox
-													value={use(browser.settings.showBookmarksBar)}
-													id="show-bookmarks-bar"
-												/>
-												<label for="show-bookmarks-bar">
-													Always show bookmarks bar
-												</label>
-											</div>
-										</div>
-									</div>
-								</section>
 							</div>
 						) : null
 					)}
@@ -252,7 +368,9 @@ export function SettingsPage(
 										<div class="setting-group">
 											<select
 												class="select-input"
-												value={use(browser.settings.defaultSearchEngine)}
+												value={use(
+													settingsService.settings.defaultSearchEngine
+												)}
 											>
 												{Object.keys(AVAILABLE_SEARCH_ENGINES).map((key) => (
 													<option value={key}>
@@ -266,14 +384,16 @@ export function SettingsPage(
 
 								<section class="setting-section">
 									<div class="section-header">
-										<h3>Search Suggestions</h3>
+										<h2>Search Suggestions</h2>
 									</div>
 									<div class="section-content">
 										<div class="setting-group">
 											<div class="checkbox-option">
 												<Checkbox
 													id="search-suggestions"
-													value={use(browser.settings.searchSuggestionsEnabled)}
+													value={use(
+														settingsService.settings.searchSuggestionsEnabled
+													)}
 												/>
 												<label for="search-suggestions">
 													Show search and site suggestions in the address bar
@@ -292,7 +412,7 @@ export function SettingsPage(
 							<div class="settings-tab">
 								<section class="setting-section">
 									<div class="section-header">
-										<h3>Trackers & Site Data</h3>
+										<h2>Trackers & Site Data</h2>
 										<p class="description">
 											Control how the browser handles trackers and your data
 										</p>
@@ -302,7 +422,7 @@ export function SettingsPage(
 											<div class="checkbox-option">
 												<Checkbox
 													id="block-trackers"
-													value={use(browser.settings.blockTrackers)}
+													value={use(settingsService.settings.blockTrackers)}
 												/>
 												<label for="block-trackers">
 													Block third-party trackers
@@ -312,7 +432,7 @@ export function SettingsPage(
 											<div class="checkbox-option">
 												<Checkbox
 													id="do-not-track"
-													value={use(browser.settings.doNotTrack)}
+													value={use(settingsService.settings.doNotTrack)}
 												/>
 												<label for="do-not-track">
 													Send 'Do Not Track' with browsing requests
@@ -323,7 +443,7 @@ export function SettingsPage(
 								</section>
 								<section class="setting-section">
 									<div class="section-header">
-										<h3>Browsing History</h3>
+										<h2>Browsing History</h2>
 										<p class="description">
 											Control what data is saved or cleared
 										</p>
@@ -333,7 +453,9 @@ export function SettingsPage(
 											<div class="checkbox-option">
 												<Checkbox
 													id="clear-history"
-													value={use(browser.settings.clearHistoryOnExit)}
+													value={use(
+														settingsService.settings.clearHistoryOnExit
+													)}
 												/>
 												<label for="clear-history">
 													Clear history when browser closes
@@ -362,7 +484,9 @@ export function SettingsPage(
 											<div class="extension-item">
 												<div class="extension-info">
 													<div class="extension-icon">
-														<Icon icon={iconExtension} />
+														<span class="icon-inner">
+															<Icon icon={iconExtension} />
+														</span>
 													</div>
 													<div class="extension-details">
 														<h4>No extensions installed</h4>
@@ -376,23 +500,30 @@ export function SettingsPage(
 
 								<section class="setting-section">
 									<div class="section-header">
-										<h3>Developer Mode</h3>
+										<h2>Developer Mode</h2>
 									</div>
 									<div class="section-content">
 										<div class="setting-group">
 											<div class="checkbox-option">
 												<Checkbox
 													id="dev-mode"
-													value={use(browser.settings.extensionsDevMode)}
+													value={use(
+														settingsService.settings.extensionsDevMode
+													)}
 												/>
 												<label for="dev-mode">Enable developer mode</label>
 											</div>
 
-											{browser.settings.extensionsDevMode && (
-												<div class="dev-buttons">
-													<Button>Load Unpacked</Button>
-													<Button>Pack Extension</Button>
-												</div>
+											{use(settingsService.settings.extensionsDevMode).map(
+												(enabled) =>
+													enabled && (
+														<div class="dev-buttons">
+															<Button variant="primary">Load Unpacked</Button>
+															<Button variant="secondary">
+																Pack Extension
+															</Button>
+														</div>
+													)
 											)}
 										</div>
 									</div>
@@ -420,7 +551,7 @@ export function SettingsPage(
 													Scramjet Version: {versionInfo.version} (
 													{versionInfo.build})
 												</p>
-												<p>© 2025 Puter Technologies</p>
+												<p>© {__COPYRIGHT_YEAR__} Puter Technologies</p>
 											</div>
 										</div>
 									</div>
@@ -485,25 +616,37 @@ SettingsPage.style = css`
 
 	h1 {
 		font-size: 1.5rem;
-		font-weight: 600;
-		margin-bottom: 1.5rem;
+		font-weight: 700;
+		margin-bottom: 2rem;
+	}
+
+	.settings-content h1 {
+		margin-bottom: 2.75rem;
 	}
 
 	h2 {
-		font-size: 1.3rem;
-		font-weight: 600;
-		margin-bottom: 1.5rem;
+		font-size: 1.2rem;
+		font-weight: 700;
+		margin-bottom: 0.5rem;
 		color: var(--ntp_text);
 	}
 
 	h3 {
-		font-size: 1.1rem;
+		font-size: 1.08rem;
 		font-weight: 600;
 		color: var(--ntp_text);
+		margin-bottom: 0.8rem;
 	}
 
 	h4 {
-		font-size: 0.95rem;
+		font-size: 0.925rem;
+		font-weight: 550;
+		color: var(--ntp_text);
+		margin-bottom: 0.7rem;
+	}
+
+	h5 {
+		font-size: 0.87rem;
 		font-weight: 500;
 		color: var(--ntp_text);
 		margin-bottom: 0.5rem;
@@ -536,9 +679,12 @@ SettingsPage.style = css`
 		align-items: center;
 		gap: 0.75rem;
 		padding: 0.75rem 1rem;
-		border-radius: 6px;
+		border-radius: var(--radius);
 		cursor: pointer;
-		transition: background-color 0.2s ease;
+		transition:
+			background-color 0.05s ease-out,
+			color 0.05s ease-out,
+			font-weight 0.1s ease-out;
 		font-size: 0.95rem;
 		color: var(--toolbar_text);
 	}
@@ -548,9 +694,9 @@ SettingsPage.style = css`
 	}
 
 	.nav-button.active {
-		background: var(--accent-15);
+		background: var(--accent-10);
 		color: var(--tab_line);
-		font-weight: 500;
+		font-weight: 600;
 	}
 
 	.content {
@@ -560,19 +706,16 @@ SettingsPage.style = css`
 		overflow: hidden;
 	}
 
-	.search-container {
-		padding: 1rem 1rem;
-	}
-
 	input {
 		font-family: inherit;
 	}
 
 	.search-container {
-		position: relative;
-		width: 100%;
-		max-width: 24rem;
-		margin-left: auto;
+		position: absolute;
+		top: 0;
+		right: 0;
+		width: 24rem;
+		padding: 1.5rem;
 	}
 
 	.search-input input {
@@ -625,12 +768,8 @@ SettingsPage.style = css`
 
 	.settings-content {
 		flex: 1;
-		padding: 1.5rem 2rem 2rem;
+		padding: 2rem;
 		overflow-y: auto;
-	}
-	.settings-content h1 {
-		margin-bottom: 1.5rem;
-		font-size: 1.75rem;
 	}
 
 	.settings-tab {
@@ -654,7 +793,7 @@ SettingsPage.style = css`
 	}
 
 	.description {
-		margin-top: 0.25rem;
+		margin-block: 0.33rem;
 		color: var(--ntp-text-60);
 	}
 
@@ -724,7 +863,7 @@ SettingsPage.style = css`
 
 	.select-input {
 		padding: 0.5rem;
-		border-radius: 4px;
+		border-radius: var(--radius);
 		border: 1px solid var(--ntp-text-20);
 		background: var(--toolbar_field);
 		color: var(--toolbar_field_text);
@@ -743,7 +882,7 @@ SettingsPage.style = css`
 		border: 1px solid var(--ntp-text-20);
 		color: var(--toolbar_field_text);
 		padding: 0.5rem 1rem;
-		border-radius: 4px;
+		border-radius: var(--radius);
 		font-size: 0.9rem;
 		cursor: pointer;
 		transition: all 0.2s ease;
@@ -780,12 +919,20 @@ SettingsPage.style = css`
 	}
 
 	.extension-icon {
-		width: 2.5rem;
-		height: 2.5rem;
+		width: 3.25rem;
+		height: 3.25rem;
 		font-size: 2.25rem;
 		border-radius: 6px;
 		background: var(--ntp-text-10);
 		color: color-mix(in srgb, var(--ntp_text) 50%, transparent);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.extension-icon .icon-inner {
+		transform: translate(2px, 2px);
+		transform-origin: top right;
 	}
 
 	.extension-details h4 {
@@ -868,7 +1015,7 @@ SettingsPage.style = css`
 	}
 
 	.theme-card {
-		border-radius: 8px;
+		border-radius: var(--radius);
 		overflow: hidden;
 		cursor: pointer;
 		transition: all 0.2s ease;
@@ -895,7 +1042,7 @@ SettingsPage.style = css`
 
 	.preview-toolbar {
 		flex: 1;
-		border-radius: 4px;
+		border-radius: var(--radius);
 		padding: 0.5rem;
 		display: flex;
 		gap: 0.5rem;

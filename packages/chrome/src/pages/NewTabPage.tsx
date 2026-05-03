@@ -1,13 +1,13 @@
-import { css } from "dreamland/core";
-import type { Tab } from "../Tab";
-import { browser } from "../Browser";
-import { trimUrl } from "../components/Omnibar/utils";
-import { createMenu } from "../components/Menu";
-import { defaultFaviconUrl } from "../assets/favicon";
-import { Icon } from "../components/Icon";
-import { iconSearch } from "../icons";
+import { css, type FC } from "dreamland/core";
+import type { Tab } from "../Tab/Tab";
+import { trimUrl } from "@components/Omnibar/utils";
+import { createMenu } from "@components/Menu";
+import { Icon } from "@components/Icon";
+import { iconLink, iconOpen, iconSearch } from "../icons";
+import { Favicon } from "@components/Favicon";
+import { profileService, tabsService } from "..";
 
-export function NewTabPage(props: { tab: Tab }) {
+export function NewTabPage(this: FC<{ tab: Tab }>) {
 	return (
 		<div>
 			<div class="topbar">
@@ -21,7 +21,9 @@ export function NewTabPage(props: { tab: Tab }) {
 							on:keydown={(e: KeyboardEvent) => {
 								if (e.key === "Enter") {
 									e.preventDefault();
-									browser.searchNavigate((e.target as HTMLInputElement).value);
+									tabsService.searchNavigate(
+										(e.target as HTMLInputElement).value
+									);
 								}
 							}}
 							placeholder="Search Google or type A URL"
@@ -37,28 +39,30 @@ export function NewTabPage(props: { tab: Tab }) {
 			</div>
 			<div class="main">
 				<div class="suggestions">
-					{browser.globalhistory.slice(0, 5).map((entry) => (
+					{profileService.globalhistory.slice(0, 5).map((entry) => (
 						<div
 							class="suggestion"
 							on:contextmenu={(e: MouseEvent) => {
 								createMenu({ left: e.clientX, top: e.clientY }, [
 									{
 										label: "Open",
-										action: () => browser.activetab.pushNavigate(entry.url),
+										icon: iconLink,
+										action: () => tabsService.activetab.pushNavigate(entry.url),
 									},
 									{
 										label: "Open in New Tab",
-										action: () => browser.newTab(entry.url),
+										icon: iconOpen,
+										action: () => tabsService.newTab(entry.url),
 									},
 								]);
 								e.preventDefault();
 								e.stopPropagation();
 							}}
-							on:click={() => browser.newTab(entry.url)}
+							on:click={() => tabsService.newTab(entry.url)}
 						>
 							<div class="suggestioninner">
 								<div class="circle">
-									<img src={entry.favicon || defaultFaviconUrl} alt="favicon" />
+									<Favicon iconUrl={entry.favicon} size="medium"></Favicon>
 								</div>
 								<span class="title">{entry.title || trimUrl(entry.url)}</span>
 							</div>
@@ -137,6 +141,7 @@ NewTabPage.style = css`
 		background: none;
 		border: none;
 		color: var(--ntp_text);
+		font-family: var(--font);
 	}
 
 	.suggestions {
@@ -181,10 +186,6 @@ NewTabPage.style = css`
 		text-align: center;
 		white-space: nowrap;
 		line-height: 1.2;
-	}
-	.suggestion img {
-		width: 32px;
-		height: 32px;
 	}
 
 	.main {

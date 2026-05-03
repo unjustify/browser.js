@@ -1,22 +1,12 @@
-import {
-	iconClose,
-	iconAdd,
-	iconNew,
-	iconDuplicate,
-	iconRefresh,
-} from "../../icons";
-import { css, type ComponentContext } from "dreamland/core";
-import { Icon } from "../Icon";
-import { memoize } from "../../memoize";
-import { OmnibarButton } from "../Omnibar/OmnibarButton";
-import type { Tab } from "../../Tab";
+import { iconAdd, iconNew } from "../../icons";
+import { css, type FC } from "dreamland/core";
+import { OmnibarButton } from "@components/Omnibar/OmnibarButton";
+import { TabHoverCard } from "@components/TabStrip/TabHoverCard";
+import type { Tab } from "../../Tab/Tab";
 // import html2canvas from "html2canvas";
-import { setContextMenu } from "../Menu";
-import { browser, forceScreenshot, pushTab } from "../../Browser";
-import { defaultFaviconUrl } from "../../assets/favicon";
-import { DragTab } from "./DragTab";
-import { markDirty } from "../../storage";
-import { requestUnfocusFrames } from "../Shell";
+import { setContextMenu } from "@components/Menu";
+import { DragTab } from "@components/TabStrip/DragTab";
+import { requestUnfocusFrames } from "@components/Shell";
 
 type VisualTab = {
 	tab: Tab;
@@ -24,36 +14,43 @@ type VisualTab = {
 	dragoffset: number;
 	dragpos: number;
 	startdragpos: number;
+	closing: boolean;
 
 	width: number;
 	pos: number;
 };
 export function TabStrip(
-	this: {
-		visualtabs: VisualTab[];
-		container: HTMLElement;
-		leftEl: HTMLElement;
-		rightEl: HTMLElement;
-		afterEl: HTMLElement;
+	this: FC<
+		{
+			tabs: Tab[];
+			activetab: Tab;
+			destroyTab: (tab: Tab) => void;
+			addTab: () => void;
+		},
+		{
+			visualtabs: VisualTab[];
+			container: HTMLElement;
+			leftEl: HTMLElement;
+			rightEl: HTMLElement;
+			afterEl: HTMLElement;
 
-		currentlydragging: number;
-	},
-	s: {
-		tabs: Tab[];
-		activetab: Tab;
-		destroyTab: (tab: Tab) => void;
-		addTab: () => void;
-	},
-	cx: ComponentContext
+			currentlydragging: string | null;
+			currentlyHovered: Tab | null;
+		}
+	>
 ) {
-	this.currentlydragging = -1;
+	this.currentlydragging = null;
+	this.currentlyHovered = this.tabs[0];
 	this.visualtabs = [];
 
 	const [lock, unlock] = requestUnfocusFrames();
 
 	const TAB_PADDING = 6;
 	const TAB_MAX_SIZE = 231;
-	const TAB_TRANSITION = "250ms ease";
+	// Reorder/move animation for tabs and trailing controls in the strip.
+	const TAB_TRANSITION = "225ms cubic-bezier(.43,.52,0,1.15)";
+	const TAB_STAGGER_STEP = 18;
+	const TAB_STAGGER_MAX = 144;
 
 	let transitioningTabs = 0;
 
@@ -86,11 +83,15 @@ export function TabStrip(
 
 	const getTabWidth = () => {
 		let total = getRootWidth();
+		const visibleTabCount = this.visualtabs.filter(
+			(tab) => !tab.closing
+		).length;
+		const count = Math.max(visibleTabCount, 1);
 
 		// remove padding
-		total -= TAB_PADDING * (this.visualtabs.length - 1);
+		total -= TAB_PADDING * (count - 1);
 
-		const each = total / this.visualtabs.length;
+		const each = total / count;
 
 		return Math.min(TAB_MAX_SIZE, Math.floor(each));
 	};
@@ -115,24 +116,52 @@ export function TabStrip(
 
 		let dragpos = -1;
 		let currpos = getLayoutStart();
+		let staggerIndex = 0;
+		let movedTabs = 0;
 		for (const tab of this.visualtabs) {
+			if (tab.closing) {
+				// Closing tabs animate their own width; keep their current transform while
+				// siblings/new-tab button reflow into post-close slots.
+				const tabPos = tab.dragpos != -1 ? tab.dragpos : tab.pos;
+				tab.root.style.transform = `translateX(${tabPos}px)`;
+				tab.pos = tabPos;
+				continue;
+			}
+
 			tab.root.style.width = width + "px";
 
 			const tabPos = tab.dragpos != -1 ? tab.dragpos : currpos;
+			// Moves each tab horizontally to its computed slot.
 			tab.root.style.transform = `translateX(${tabPos}px)`;
 			if (transition && tab.dragpos == -1 && tab.pos != tabPos) {
-				tab.root.style.transition = `transform ${TAB_TRANSITION}`;
-				this.afterEl.style.transition = `transform ${TAB_TRANSITION}`;
+				const delay = Math.min(
+					staggerIndex * TAB_STAGGER_STEP,
+					TAB_STAGGER_MAX
+				);
+				// Animates tab movement when tabs are inserted/removed/reordered.
+				tab.root.style.transition = `transform ${TAB_TRANSITION} ${delay}ms`;
 				transitioningTabs++;
+				movedTabs++;
 			}
 			dragpos = Math.max(dragpos, tab.dragpos + width + TAB_PADDING);
 
 			tab.pos = tabPos;
 			tab.width = width;
 			currpos += width + TAB_PADDING;
+			staggerIndex++;
+		}
+
+		if (transition && movedTabs > 0) {
+			const afterDelay = Math.min(
+				staggerIndex * TAB_STAGGER_STEP,
+				TAB_STAGGER_MAX
+			);
+			// Animate trailing "after" area (new-tab button container) with stagger too.
+			this.afterEl.style.transition = `transform ${TAB_TRANSITION} ${afterDelay}ms`;
 		}
 
 		const afterpos = Math.max(dragpos, currpos);
+		// Moves the trailing control area to stay after the last tab.
 		this.afterEl.style.transform = `translateX(${afterpos}px)`;
 	};
 
@@ -150,7 +179,7 @@ export function TabStrip(
 	};
 
 	window.addEventListener("mousemove", (e: MouseEvent) => {
-		if (this.currentlydragging == -1) return;
+		if (this.currentlydragging === null) return;
 		calcDragPos(
 			e,
 			this.visualtabs.find((tab) => tab.tab.id === this.currentlydragging)!
@@ -158,7 +187,7 @@ export function TabStrip(
 	});
 
 	window.addEventListener("mouseup", () => {
-		if (this.currentlydragging == -1) return;
+		if (this.currentlydragging === null) return;
 		const tab = this.visualtabs.find(
 			(tab) => tab.tab.id === this.currentlydragging
 		)!;
@@ -169,7 +198,7 @@ export function TabStrip(
 		tab.dragoffset = -1;
 		tab.dragpos = -1;
 		layoutTabs(true);
-		this.currentlydragging = -1;
+		this.currentlydragging = null;
 		unlock();
 	});
 
@@ -190,26 +219,24 @@ export function TabStrip(
 
 		calcDragPos(e, tab);
 
-		if (s.activetab != tab.tab) {
-			s.activetab = tab.tab;
-			markDirty();
+		if (this.activetab != tab.tab) {
+			this.activetab = tab.tab;
+			// markDirty();
 		}
 	};
 
 	const transitionend = () => {
-		transitioningTabs--;
+		transitioningTabs = Math.max(transitioningTabs - 1, 0);
 		if (transitioningTabs == 0) {
-			s.tabs = s.tabs;
+			this.afterEl.style.transition = "";
 		}
-
-		this.afterEl.style.transition = "";
 	};
 
-	use(s.tabs).listen(() => {
+	use(this.tabs).listen(() => {
 		let newvisualtabs: VisualTab[] = [];
 
-		for (let index = 0; index < s.tabs.length; index++) {
-			let tab = s.tabs[index];
+		for (let index = 0; index < this.tabs.length; index++) {
+			let tab = this.tabs[index];
 
 			let visualtab = this.visualtabs.find((t) => t.tab === tab);
 
@@ -218,10 +245,13 @@ export function TabStrip(
 					<DragTab
 						id={tab.id}
 						tab={tab}
-						active={use(s.activetab).map((x) => x === tab)}
+						active={use(this.activetab).map((x) => x === tab)}
 						mousedown={(e) => mouseDown(e, visualtab!)}
+						mouseover={() => {
+							this.currentlyHovered = tab;
+						}}
 						destroy={() => {
-							s.destroyTab(tab);
+							this.destroyTab(tab);
 						}}
 						transitionend={transitionend}
 					/>
@@ -232,6 +262,7 @@ export function TabStrip(
 					dragoffset: -1,
 					dragpos: -1,
 					startdragpos: -1,
+					closing: false,
 					width: 0,
 					pos: getLayoutStart() + index * (getTabWidth() + TAB_PADDING),
 				};
@@ -243,7 +274,9 @@ export function TabStrip(
 		for (let vtab of this.visualtabs) {
 			if (!newvisualtabs.includes(vtab)) {
 				let indexof = this.visualtabs.indexOf(vtab);
+				vtab.closing = true;
 				newvisualtabs.splice(indexof, 0, vtab);
+				// Close-tab animation: collapses tab width to 0 before removal from DOM list.
 				let anim = vtab.root.animate(
 					[
 						{},
@@ -252,7 +285,8 @@ export function TabStrip(
 						},
 					],
 					{
-						duration: 100,
+						duration: 150,
+						easing: "cubic-bezier(.29,.44,.3,.94)",
 						fill: "forwards",
 					}
 				);
@@ -271,25 +305,25 @@ export function TabStrip(
 		setTimeout(() => layoutTabs(true), 10);
 	});
 
-	cx.mount = () => {
+	this.cx.mount = () => {
 		requestAnimationFrame(() => layoutTabs(false));
 		window.addEventListener("resize", () => layoutTabs(false));
 
-		setContextMenu(cx.root, [
+		setContextMenu(this.root, [
 			{
 				label: "New Tab",
 				icon: iconNew,
 				action: () => {
-					s.addTab();
+					this.addTab();
 				},
 			},
 		]);
 
-		s.tabs = s.tabs;
+		this.tabs = this.tabs;
 	};
 
 	return (
-		<div this={use(this.container)}>
+		<div id="tabstrip" this={use(this.container)}>
 			<div class="extra left" this={use(this.leftEl)}></div>
 			{use(this.visualtabs).mapEach((tab) => tab.root)}
 			<div
@@ -300,21 +334,39 @@ export function TabStrip(
 					e.stopPropagation();
 				}}
 			>
-				<OmnibarButton icon={iconAdd} click={s.addTab}></OmnibarButton>
+				<OmnibarButton icon={iconAdd} click={this.addTab}></OmnibarButton>
 			</div>
 			<div class="extra right" this={use(this.rightEl)}></div>
+			<TabHoverCard hoveredTab={use(this.currentlyHovered)} />
 		</div>
 	);
 }
 TabStrip.style = css`
 	:scope {
-		--tab-padding: 4px;
 		background: var(--frame);
 		padding: var(--tab-padding) 12px;
 		height: calc(var(--tab-height) + calc(var(--tab-padding) * 2));
 		z-index: 2;
-
 		position: relative;
+	}
+
+	:global(#tabstrip #hovercard) {
+		transition:
+			opacity 0.2s ease 700ms,
+			scale 0.2s cubic-bezier(0.43, 0.91, 0.34, 1.3) 700ms,
+			visibility 0s,
+			left 0.2s cubic-bezier(0.33, 0.22, 0.18, 1.17);
+		scale: 1;
+	}
+
+	:global(
+		#tabstrip:is(:has(:active), :not(:has(:hover:not(.extra, .extra *))))
+			#hovercard
+	) {
+		visibility: hidden;
+		opacity: 0;
+		scale: 0.8;
+		transition: none;
 	}
 
 	.extra {

@@ -10,6 +10,9 @@ export * from "./shared";
 export * from "./symbols";
 export * from "./types";
 export * from "./fetch";
+export * from "./Tap";
+export { BareResponse } from "@mercuryworkshop/proxy-transports";
+import { atob } from "@/shared/snapshot";
 
 declare const REWRITERWASM: string | undefined;
 
@@ -32,16 +35,31 @@ export const defaultConfig: ScramjetConfig = {
 		syncxhr: false,
 		strictRewrites: true,
 		rewriterLogs: false,
-		captureErrors: true,
+		captureErrors: false,
 		cleanErrors: false,
 		scramitize: false,
 		sourcemaps: true,
 		destructureRewrites: false,
 		allowInvalidJs: false,
+		debugTrampolines: false,
 		allowFailedIntercepts: false,
+		encapsulateWorkers: true,
+		debugSourceURL: false,
 	},
 	siteFlags: {},
 	maskedfiles: [],
+};
+
+export const defaultConfigDev: ScramjetConfig = {
+	...defaultConfig,
+	flags: {
+		...defaultConfig.flags,
+		rewriterLogs: false,
+		captureErrors: true,
+		cleanErrors: false,
+		debugTrampolines: true,
+		debugSourceURL: true,
+	},
 };
 
 // bundled build will have the wasm binary inlined as a base64 string

@@ -1,17 +1,19 @@
-import { css } from "dreamland/core";
+import { css, type FC } from "dreamland/core";
 
-export function Checkbox(props: {
-	value: boolean;
-	id?: string;
-	"on:change"?: (value: boolean) => void;
-}) {
+export function Checkbox(
+	this: FC<{
+		value: boolean;
+		id?: string;
+		"on:change"?: (value: boolean) => void;
+	}>
+) {
 	return (
 		<label>
 			<input
 				type="checkbox"
-				id={use(props.id)}
-				checked={use(props.value)}
-				onChange={(e) => props["on:change"]?.(e.target.checked)}
+				id={use(this.id)}
+				checked={use(this.value)}
+				onChange={(e) => this["on:change"]?.(e.target.checked)}
 			></input>
 		</label>
 	);
@@ -25,7 +27,7 @@ Checkbox.style = css`
 		border: 1px solid var(--text-20);
 		display: inline-block;
 		position: relative;
-		border-radius: 4px;
+		border-radius: var(--radius);
 		vertical-align: middle;
 		transition:
 			background 120ms ease,
@@ -34,26 +36,35 @@ Checkbox.style = css`
 	}
 
 	:scope::after {
-		content: " ";
+		content: "✓";
 		position: absolute;
 		inset: 0;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		color: var(--toolbar_field);
+		text-shadow: 0 0.055em 0.05em var(--accent-shade-20);
 		font-size: 0.8em;
 		transform: scale(0);
-		transition: transform 120ms ease;
+		transition: transform 120ms cubic-bezier(0.43, 0.91, 0.34, 1.3);
 		pointer-events: none;
 	}
 
 	:scope:has(input:checked) {
-		background: var(--tab_line);
-		border-color: var(--tab_line);
+		background-color: var(--tab_line);
+		background-image: radial-gradient(
+			70% 50% at 50% 100%,
+			var(--accent-tint-20),
+			var(--accent-shade-10)
+		);
+		box-shadow:
+			inset 0px 0.05em 0.025em rgb(255 255 255 / 40%),
+			inset 0px -0.05em 0.04em rgb(0 0 0 / 20%);
+		border: none;
 	}
 
 	:scope:has(input:checked)::after {
-		transform: scale(1);
+		transform: scale(1) translateY(0.5px);
 	}
 
 	input {

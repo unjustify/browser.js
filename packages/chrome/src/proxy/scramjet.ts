@@ -1,6 +1,6 @@
 import {
-	CookieJar,
 	defaultConfig,
+	defaultConfigDev,
 	ScramjetFetchHandler,
 	type ScramjetConfig,
 	type ScramjetFetchRequest,
@@ -8,17 +8,16 @@ import {
 	unrewriteUrl,
 	type ScramjetFetchResponse,
 	rewriteUrl,
+	ScramjetHeaders,
+	isInlineDisplayableMimeType,
 } from "@mercuryworkshop/scramjet/bundled";
-import type {
-	BareHeaders,
-	BareResponseFetch,
-} from "@mercuryworkshop/bare-mux-custom";
+import type { BareResponse } from "@mercuryworkshop/proxy-transports";
 import { RpcHelper } from "@mercuryworkshop/rpc";
 
-import scramjetWASM from "../../../scramjet/packages/core/dist/scramjet.wasm.wasm?url";
+import scramjetWASM from "../../../scramjet/packages/core/dist/scramjet.wasm?url";
 import injectScript from "../../../inject/dist/inject.js?url";
+import { isIsolated } from ".";
 
-import { browser } from "../Browser";
 export const virtualWasmPath = "scramjet.wasm.js";
 export const virtualInjectPath = "inject.js";
 
@@ -26,11 +25,10 @@ function makeConfig(): ScramjetConfig {
 	return {
 		...defaultConfig,
 		flags: {
-			...defaultConfig.flags,
+			...defaultConfigDev.flags,
 			captureErrors: false,
 		},
 		maskedfiles: ["inject.js", "scramjet.wasm.js"],
-		allowedwebsockets: [import.meta.env.VITE_WISP_URL],
 	};
 }
 
@@ -53,11 +51,17 @@ import type {
 import { bare, transport, wispUrl } from "./wisp";
 import { codecDecode, codecEncode } from "./codec";
 import { Controller, controllerForURL, makeId } from "./Controller";
-import type { Tab } from "../Tab";
-import { createMenu } from "../components/Menu";
+import type { Tab } from "../Tab/Tab";
+import { createMenu } from "@components/Menu";
 import { pageContextItems } from "./contextitems";
 import type { BodyType } from "../../../scramjet/packages/controller/src/types";
 import { getTheme } from "../themes";
+import {
+	downloadsService,
+	profileService,
+	settingsService,
+	tabsService,
+} from "..";
 function findSequence(
 	top: Window,
 	target: Window,
@@ -75,7 +79,7 @@ function findSequence(
 	}
 }
 
-function reduceSequence(sequence: FrameSequence): Window | null {
+export function reduceSequence(sequence: FrameSequence): Window | null {
 	return sequence.reduce<Window | null>((win, idx) => {
 		if (!win) return null;
 		return win.frames[idx];
@@ -94,22 +98,25 @@ class ProxyFrameContext {
 			{
 				load: async ({ url, sequence }) => {
 					this.windowproxy = reduceSequence(sequence);
-					console.log("WP" + id, this.windowproxy);
 					tab =
-						browser.tabs.find(
+						tabsService.tabs.find(
 							(t) => t.frame.frame.contentWindow === this.windowproxy
 						) || null;
 					if (!tab) return;
 
-					console.log("TAB FOUND", url);
 					if (tab.history.justTriggeredNavigation) {
 						// url bar was typed in, we triggered this navigation, don't push a new state since we already did
 						tab.history.justTriggeredNavigation = false;
 					} else {
 						// the page just loaded on its own (a link was clicked, window.location was set)
-						tab.history.push(new URL(url), undefined, false);
+						tab.history.push(new URL(url), undefined, null, false);
 					}
 					tab.initialLoad();
+					// it won't allow scrolling inputs until the tab is focused or something
+					// for some reason frame.focus() doesn't work but frame.click() does ? even cross origin
+					if (tabsService.activetab === tab) {
+						tab.frame.frame.click();
+					}
 				},
 				titlechange: async ({ title, icon }) => {
 					if (!tab) return;
@@ -152,11 +159,58 @@ class ProxyFrameContext {
 						tab.history.replace(new URL(url), title, state, false);
 					}
 				},
+				newtab: async ({ url }) => {
+					const tab = tabsService.newTab(new URL(url));
+					await tab.waitForInit;
+					const seq = findSequence(
+						top!,
+						tab.frame.frame.contentWindow as Window
+					);
+					if (!seq) throw new Error("No sequence found for new tab");
+
+					return [
+						{
+							sequence: seq,
+						},
+						[],
+					];
+				},
+				registerFrameContext: async ({ id: childId }) => {
+					contexts.push(new ProxyFrameContext(this.controller, childId));
+				},
+				setCookies: async ({ cookies }) => {
+					for (const { url, cookie } of cookies) {
+						try {
+							profileService.cookieJar.setCookies(cookie, new URL(url));
+						} catch {
+							console.error("Failed to set cookie", { url, cookie });
+						}
+					}
+					profileService.markDirty();
+
+					for (const ctx of contexts) {
+						if (ctx === this) continue;
+						if (!ctx.alive()) continue;
+						void ctx.rpc.call("setCookies", { cookies });
+					}
+				},
 			},
 			id,
 			(message, transfer) => {
 				if (this.windowproxy) {
-					this.windowproxy.postMessage(message, "*", transfer);
+					// is it a windowproxy?
+					if (isIsolated) {
+						this.windowproxy.postMessage(message, "*", transfer);
+					} else {
+						// TODO :(
+						this.windowproxy[Symbol.for("scramjet client global")].natives.call(
+							"window.postMessage",
+							this.windowproxy,
+							message,
+							"*",
+							transfer
+						);
+					}
 				} else {
 					console.warn("No window proxy available for frame context", this.id);
 				}
@@ -186,7 +240,7 @@ export function renderErrorPage(controller: Controller, error: Error): string {
 	let frameContext = new ProxyFrameContext(controller, contextId);
 	contexts.push(frameContext);
 
-	const theme = getTheme(browser.settings.themeId);
+	const theme = getTheme(settingsService.settings.themeId);
 
 	return `
 		<script src="${controller.prefix.href}${virtualWasmPath}"></script>
@@ -196,17 +250,18 @@ export function renderErrorPage(controller: Controller, error: Error): string {
 				id: "${contextId}",
 				sequence: ${JSON.stringify(findSequence(top!, self)!)},
 				config: ${JSON.stringify(makeConfig())},
-				cookies: ${JSON.stringify(browser.cookieJar.dump())},
+				cookies: ${JSON.stringify(profileService.cookieJar.dump())},
 				wisp: ${JSON.stringify(wispUrl)},
 				codecEncode: ${codecEncode.toString()},
 				codecDecode: ${codecDecode.toString()},
 				prefix: "${controller.prefix.href}",
+				initHeaders: [],
+				history: [],
 			}, {
 				message: ${JSON.stringify(error.message)},
 				stack: ${JSON.stringify(error.stack)},
 				theme: ${JSON.stringify(theme)},
 			});
-			document.currentScript.remove();
 		</script>
 	`;
 }
@@ -215,30 +270,38 @@ export function createFetchHandler(controller: Controller) {
 	const getInjectScripts: ScramjetInterface["getInjectScripts"] = (
 		meta,
 		handler,
+		htmlcontext,
 		script
 	) => {
 		const contextId = "context-" + makeId();
 		let frameContext = new ProxyFrameContext(controller, contextId);
 		contexts.push(frameContext);
 
+		const initHeaders = htmlcontext.headers ?? [];
+		const history = htmlcontext.history ?? [];
+
 		const injected = `
 			$injectLoad({
 				id: "${contextId}",
 				sequence: ${JSON.stringify(findSequence(top!, self)!)},
 				config: ${JSON.stringify(makeConfig())},
-				cookies: ${JSON.stringify(browser.cookieJar.dump())},
+				cookies: ${JSON.stringify(profileService.cookieJar.dump())},
 				wisp: ${JSON.stringify(wispUrl)},
 				codecEncode: ${codecEncode.toString()},
 				codecDecode: ${codecDecode.toString()},
 				prefix: "${controller.prefix.href}",
+				initHeaders: ${JSON.stringify(initHeaders)},
+				history: ${JSON.stringify(history)},
 			});
-			document.currentScript.remove();
+			document.querySelectorAll("script[scramjet-injected]").forEach(script => script.remove());
 		`;
 
 		return [
 			script(controller.prefix.href + virtualWasmPath),
 			script(controller.prefix.href + virtualInjectPath),
-			script("data:application/javascript;base64," + base64Encode(injected)),
+			script(
+				"data:text/javascript;charset=utf-8;base64," + base64Encode(injected)
+			),
 		];
 	};
 
@@ -249,6 +312,7 @@ export function createFetchHandler(controller: Controller) {
 	) => {
 		let str = "";
 
+		// workers don't have a document, so initHeaders/history are empty.
 		const injectLoad = `
 				$injectLoad({
 					config: ${JSON.stringify(makeConfig())},
@@ -257,12 +321,14 @@ export function createFetchHandler(controller: Controller) {
 					codecEncode: ${codecEncode.toString()},
 					codecDecode: ${codecDecode.toString()},
 					prefix: "${controller.prefix.href}",
+					initHeaders: [],
+					history: [],
 				});
 			`;
 		str += script(controller.prefix.href + virtualWasmPath);
 		str += script(controller.prefix.href + virtualInjectPath);
 		str += script(
-			`data:application/javascript;base64,${base64Encode(injectLoad)}`
+			`data:text/javascript;charset=utf-8;base64,${base64Encode(injectLoad)}`
 		);
 
 		return str;
@@ -277,16 +343,16 @@ export function createFetchHandler(controller: Controller) {
 				codecEncode,
 				codecDecode,
 			},
-			cookieJar: browser.cookieJar,
+			cookieJar: profileService.cookieJar,
 			config: makeConfig(),
 			prefix: controller.prefix,
 		},
 		async fetchDataUrl(dataUrl: string) {
-			return (await fetch(dataUrl)) as BareResponseFetch;
+			return (await fetch(dataUrl)) as BareResponse;
 		},
 		async fetchBlobUrl(blobUrl: string) {
 			// find a random tab under this controller
-			const tab = browser.tabs.find(
+			const tab = tabsService.tabs.find(
 				(tab) => tab.frame.controller === controller
 			);
 			if (!tab) throw new Error("No tab found for blob fetch (?)");
@@ -306,34 +372,47 @@ export function createFetchHandler(controller: Controller) {
 			headers.set("Content-Type", response.contentType);
 			return new Response(response.body, {
 				headers,
-			}) as BareResponseFetch;
+			}) as BareResponse;
 		},
-		async sendSetCookie(url: URL, cookie: string) {
-			let promises: Promise<any>[] = [];
+		async sendSetCookie(cookies, options) {
+			profileService.markDirty();
+
+			const serialized = cookies.map(({ url, cookie }) => ({
+				url: url.href,
+				cookie,
+			}));
+			const promises: Promise<any>[] = [];
 			for (const context of contexts) {
 				if (context.alive()) {
-					// console.log("sending to " + context.id, context.windowproxy);
 					promises.push(
-						context.rpc.call("setCookie", {
-							url: url.href,
-							cookie,
+						context.rpc.call("setCookies", {
+							cookies: serialized,
 						})
 					);
 				}
 			}
 			if (promises.length === 0) return;
-			// console.log("actually sent");
 
-			// a context could be deadlocked, so add a safety
-			// await Promise.race([
-			// 	new Promise((res) =>
-			// 		setTimeout(() => {
-			// 			console.error("a context deadlocked! hit timeout");
-			// 			res(null);
-			// 		}, 1000)
-			// 	),
-			// 	Promise.all(promises),
-			// ]);
+			const isNavigation =
+				options?.destination === "document" ||
+				options?.destination === "iframe";
+			if (isNavigation) return;
+
+			let timeoutId: ReturnType<typeof setTimeout> | undefined;
+			const timeoutPromise = new Promise<void>((resolve) => {
+				timeoutId = setTimeout(() => {
+					console.error("timed out waiting for inject context cookie sync ack");
+					resolve();
+				}, 1000);
+			});
+			try {
+				await Promise.race([
+					timeoutPromise,
+					Promise.any(promises).catch(() => {}),
+				]);
+			} finally {
+				if (timeoutId !== undefined) clearTimeout(timeoutId);
+			}
 		},
 	});
 
@@ -349,12 +428,13 @@ export type RawDownload = {
 	body: BodyType;
 	length: number;
 };
+
 function isDownload(
-	responseHeaders: BareHeaders,
+	responseHeaders: ScramjetHeaders,
 	destination: string
 ): boolean {
 	if (["document", "iframe"].includes(destination)) {
-		const header = responseHeaders["content-disposition"]?.[0];
+		const header = responseHeaders.get("content-disposition");
 		if (header) {
 			if (header === "inline") {
 				return false; // force it to show in browser
@@ -362,31 +442,8 @@ function isDownload(
 				return true;
 			}
 		} else {
-			// check mime type as fallback
-			const displayableMimes = [
-				// Text types
-				"text/html",
-				"text/plain",
-				"text/css",
-				"text/javascript",
-				"text/xml",
-				"application/javascript",
-				"application/json",
-				"application/xml",
-				"application/pdf",
-			];
-			const contentType = responseHeaders["content-type"]?.[0]
-				?.split(";")[0]
-				.trim()
-				.toLowerCase();
-			if (
-				contentType &&
-				!displayableMimes.includes(contentType) &&
-				!contentType.startsWith("text") &&
-				!contentType.startsWith("image") &&
-				!contentType.startsWith("font") &&
-				!contentType.startsWith("video")
-			) {
+			const contentType = responseHeaders.get("content-type");
+			if (contentType && !isInlineDisplayableMimeType(contentType)) {
 				return true;
 			}
 		}
@@ -407,16 +464,14 @@ async function makeWasmResponse() {
 				.join("")
 		);
 
-		let payload = "";
-		payload +=
-			"if ('document' in self && document.currentScript) { document.currentScript.remove(); }\n";
-		payload += `self.WASM = '${b64}';`;
-		wasmPayload = payload;
+		wasmPayload = `self.WASM = '${b64}';`;
 	}
 
 	return {
 		body: wasmPayload,
-		headers: { "Content-Type": "application/javascript" },
+		headers: ScramjetHeaders.fromRawHeaders([
+			["Content-Type", "application/javascript"],
+		]),
 		status: 200,
 		statusText: "OK",
 	};
@@ -437,7 +492,9 @@ export async function handlefetch(
 			const text = await x.text();
 			return {
 				body: text,
-				headers: { "Content-Type": "application/javascript" },
+				headers: ScramjetHeaders.fromRawHeaders([
+					["Content-Type", "application/javascript"],
+				]),
 				status: 200,
 				statusText: "OK",
 			};
@@ -459,17 +516,20 @@ export async function handlefetch(
 				body: "Redirecting Cross-Origin Frame Request...",
 				status: 302,
 				statusText: "Found",
-				headers: {
-					"Content-Type": "text/plain",
-					Location: rewriteUrl(
-						new URL(unrewritten),
-						newcontroller.fetchHandler.context,
-						{
-							origin: newcontroller.prefix,
-							base: newcontroller.prefix,
-						}
-					),
-				},
+				headers: ScramjetHeaders.fromRawHeaders([
+					["Content-Type", "text/plain"],
+					[
+						"Location",
+						rewriteUrl(
+							new URL(unrewritten),
+							newcontroller.fetchHandler.context,
+							{
+								origin: newcontroller.prefix,
+								base: newcontroller.prefix,
+							}
+						),
+					],
+				]),
 			};
 		}
 	}
@@ -481,20 +541,20 @@ export async function handlefetch(
 		fetchresponse.status === 200
 	) {
 		let filename: string | null = null;
-		const disp = fetchresponse.headers["content-disposition"]?.[0];
+		const disp = fetchresponse.headers.get("content-disposition");
 		if (typeof disp === "string") {
 			const filenameMatch = disp.match(/filename=["']?([^"';\n]*)["']?/i);
 			if (filenameMatch && filenameMatch[1]) {
 				filename = filenameMatch[1];
 			}
 		}
-		const length = fetchresponse.headers["content-length"][0];
+		const length = fetchresponse.headers.get("content-length") || "0";
 
-		browser.startDownload({
+		downloadsService.startDownload({
 			filename,
 			url: unrewriteUrl(data.rawUrl, { prefix: controller.prefix } as any),
 			type:
-				fetchresponse.headers["content-type"][0] || "application/octet-stream",
+				fetchresponse.headers.get("content-type") || "application/octet-stream",
 			length: parseInt(length),
 			body: fetchresponse.body,
 		});

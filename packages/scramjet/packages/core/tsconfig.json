@@ -1,10 +1,9 @@
 {
 	"compilerOptions": {
-		// "allowJs": true,
+		"target": "esnext",
+		"module": "esnext",
 		"rootDir": "./src",
-		"target": "ES2022",
 		"moduleResolution": "Bundler",
-		"module": "ES2022",
 		"skipLibCheck": true,
 		"declaration": true,
 		"declarationDir": "./dist/types",

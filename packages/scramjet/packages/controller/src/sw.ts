@@ -1,13 +1,14 @@
-declare var clients: Clients;
+declare let clients: Clients;
 import { RpcHelper } from "@mercuryworkshop/rpc";
 import type { Controllerbound, SWbound } from "./types";
-import type { BareHeaders } from "@mercuryworkshop/bare-mux-custom";
+import type { RawHeaders } from "@mercuryworkshop/proxy-transports";
+import { ScramjetHeaders } from "@mercuryworkshop/scramjet";
 
 function makeId(): string {
 	return Math.random().toString(36).substring(2, 10);
 }
 
-let cookieResolvers: Record<string, (value: void) => void> = {};
+const cookieResolvers: Record<string, (value: void) => void> = {};
 addEventListener("message", (e) => {
 	if (!e.data) return;
 	if (typeof e.data != "object") return;
@@ -27,7 +28,6 @@ addEventListener("message", (e) => {
 	) {
 		const { port, prefix } = e.data.$sw$initRemoteTransport;
 
-		console.error(prefix, tabs);
 		const relevantcontroller = tabs.find((tab) =>
 			new URL(prefix).pathname.startsWith(tab.prefix)
 		);
@@ -49,36 +49,82 @@ class ControllerReference {
 	) {
 		this.rpc = new RpcHelper(
 			{
-				sendSetCookie: async ({ url, cookie }) => {
-					let clients = await self.clients.matchAll();
-					let promises = [];
+				sendSetCookie: async ({ cookies, options }) => {
+					const clients = await self.clients.matchAll();
+					const ids: string[] = [];
+					const promises: Promise<string>[] = [];
+
+					// Navigation fetches (document/iframe) deliver cookies via the inject
+					// script's embedded cookieJar dump — the destination page doesn't have
+					// inject.ts loaded yet to ack, so awaiting would deadlock. Broadcast
+					// so any already-loaded clients can update their jars, but don't wait.
+					const isNavigation =
+						options?.destination === "document" ||
+						options?.destination === "iframe";
 
 					for (const client of clients) {
-						let id = makeId();
+						const id = makeId();
+						ids.push(id);
 						client.postMessage({
 							$controller$setCookie: {
-								url,
-								cookie,
+								cookies,
+								options,
 								id,
 							},
 						});
-						promises.push(
-							new Promise<void>((resolve) => {
-								cookieResolvers[id] = resolve;
-							})
-						);
+						if (!isNavigation) {
+							promises.push(
+								new Promise<string>((resolve) => {
+									// Resolve with the id so we know which client replied.
+									cookieResolvers[id] = () => resolve(id);
+								})
+							);
+						}
 					}
-					await Promise.race([
-						new Promise<void>((resolve) =>
-							setTimeout(() => {
-								console.error(
-									"timed out waiting for set cookie response (deadlock?)"
-								);
+					// Wait for the first client to acknowledge the cookie sync.
+					// Using Promise.any (not Promise.all) so that extra SW clients created by
+					// window.open (e.g. test popup windows) don't cause timeouts — only the
+					// main controller client needs to respond.
+					if (promises.length > 0) {
+						let timeoutId: ReturnType<typeof setTimeout> | undefined;
+						let responded = false;
+						const timeoutPromise = new Promise<void>((resolve) => {
+							timeoutId = setTimeout(() => {
+								if (!responded) {
+									const pending = ids.filter(
+										(id) => cookieResolvers[id] !== undefined
+									);
+									console.error(
+										"timed out waiting for set cookie response (deadlock?): " +
+											`cookies=${cookies.length} clients=${clients.length} ` +
+											`pending=${pending.length}/${ids.length} ` +
+											`clientUrls=${clients.map((c) => c.url).join(",")}`
+									);
+								}
 								resolve();
-							}, 1000)
-						),
-						promises,
-					]);
+							}, 1000);
+						});
+
+						try {
+							await Promise.race([
+								timeoutPromise,
+								Promise.any(promises)
+									.then(() => {
+										responded = true;
+									})
+									.catch(() => {}),
+							]);
+						} finally {
+							// Clear the timeout so it doesn't fire spuriously after the
+							// race has already been won by Promise.any.
+							if (timeoutId !== undefined) clearTimeout(timeoutId);
+							// Clean up any pending resolvers so clients that never
+							// responded don't leak entries in cookieResolvers.
+							for (const id of ids) {
+								delete cookieResolvers[id];
+							}
+						}
+					}
 				},
 			},
 			"tabchannel-" + id,
@@ -86,12 +132,12 @@ class ControllerReference {
 				port.postMessage(data, transfer);
 			}
 		);
-		port.addEventListener("message", (e) => {
+		port.onmessage = (e: MessageEvent) => {
 			this.rpc.recieve(e.data);
-		});
+		};
 		port.onmessageerror = console.error;
 
-		this.rpc.call("ready", null);
+		this.rpc.call("ready", undefined);
 	}
 }
 
@@ -104,6 +150,10 @@ addEventListener("message", (e) => {
 	if (typeof e.data.$controller$init != "object") return;
 	const init = e.data.$controller$init;
 
+	const existing = tabs.findIndex((t) => t.id === init.id);
+	if (existing !== -1) {
+		tabs.splice(existing, 1);
+	}
 	tabs.push(new ControllerReference(init.prefix, init.id, e.ports[0]));
 });
 
@@ -119,17 +169,13 @@ export async function route(event: FetchEvent): Promise<Response> {
 		const tab = tabs.find((tab) => url.pathname.startsWith(tab.prefix))!;
 		const client = await clients.get(event.clientId);
 
-		const bareheaders: BareHeaders = {};
-
-		// @ts-expect-error for some reason it thinks headers.entries doesn't exist?
-		for (const [key, value] of event.request.headers.entries()) {
-			bareheaders[key] = [value];
-		}
+		const rawheaders: RawHeaders = [...event.request.headers];
 
 		const response = await tab.rpc.call(
 			"request",
 			{
 				rawUrl: event.request.url,
+				rawReferrer: event.request.referrer,
 				destination: event.request.destination,
 				mode: event.request.mode,
 				referrer: event.request.referrer,
@@ -137,8 +183,9 @@ export async function route(event: FetchEvent): Promise<Response> {
 				body: event.request.body,
 				cache: event.request.cache,
 				forceCrossOriginIsolated: false,
-				initialHeaders: bareheaders,
+				initialHeaders: rawheaders,
 				rawClientUrl: client ? client.url : undefined,
+				clientId: event.clientId || event.resultingClientId,
 			},
 			event.request.body instanceof ReadableStream ||
 				// @ts-expect-error the types for fetchevent are messed up
@@ -147,21 +194,13 @@ export async function route(event: FetchEvent): Promise<Response> {
 				: undefined
 		);
 
-		const realHeaders = new Headers();
-		for (const [key, values] of Object.entries(response.headers)) {
-			let val =
-				typeof values === "string" ? values : (values?.[0] ?? undefined);
-			if (val !== undefined) {
-				realHeaders.set(key, val);
-			}
-		}
-
 		return new Response(response.body, {
 			status: response.status,
 			statusText: response.statusText,
-			headers: realHeaders,
+			headers: response.headers,
 		});
 	} catch (e) {
+		console.error("Service Worker error:", e);
 		return new Response(
 			"Internal Service Worker Error: " + (e as Error).message,
 			{
@@ -170,3 +209,15 @@ export async function route(event: FetchEvent): Promise<Response> {
 		);
 	}
 }
+
+// the only way to know if a service worker has suddenly died is if this code runs again
+// notify all clients to send over their messageports again
+setTimeout(async () => {
+	console.log("service worker activated, notifying clients to revive");
+	for (const client of await clients.matchAll()) {
+		client.postMessage({
+			$controller$swrevive: {},
+		});
+	}
+	// short delay is apparently needed
+}, 100);

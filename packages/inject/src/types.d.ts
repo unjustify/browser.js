@@ -1,4 +1,8 @@
-import { ScramjetInterface } from "@mercuryworkshop/scramjet";
+import {
+	ScramjetInterface,
+	TrackedHistoryState,
+} from "@mercuryworkshop/scramjet";
+import type { RawHeaders } from "@mercuryworkshop/proxy-transports";
 import type { ThemeDefinition } from "../../chrome/src/themes";
 export type FrameSequence = number[];
 
@@ -35,6 +39,15 @@ export type Chromebound = {
 			sequence: FrameSequence;
 		},
 	];
+	registerFrameContext: [{ id: string }];
+	newtab: [
+		{
+			url: string;
+		},
+		{
+			sequence: FrameSequence;
+		},
+	];
 	history_pushState: [
 		{
 			state: any;
@@ -50,6 +63,16 @@ export type Chromebound = {
 		},
 	];
 	history_go: [{ delta: number }];
+	/**
+	 * Inject → chrome: a write to `document.cookie` (or equivalent) just landed
+	 * in this frame. Chrome updates its shared cookieJar and fans the batch out
+	 * to every other live frame context so their local jars stay in sync.
+	 */
+	setCookies: [
+		{
+			cookies: { cookie: string; url: string }[];
+		},
+	];
 };
 
 export type Framebound = {
@@ -72,10 +95,9 @@ export type Framebound = {
 			contentType: string;
 		},
 	];
-	setCookie: [
+	setCookies: [
 		{
-			cookie: string;
-			url: string;
+			cookies: { cookie: string; url: string }[];
 		},
 	];
 	updateTheme: [ThemeDefinition];
@@ -91,4 +113,6 @@ export type InjectScramjetInit = {
 	prefix: string;
 	codecEncode: ScramjetInterface["codecEncode"];
 	codecDecode: ScramjetInterface["codecDecode"];
+	initHeaders: RawHeaders;
+	history: TrackedHistoryState[];
 };

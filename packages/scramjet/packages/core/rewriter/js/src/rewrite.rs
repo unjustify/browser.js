@@ -20,9 +20,10 @@ pub(crate) enum RewriteType<'alloc: 'data, 'data> {
 		enclose: bool,
 	},
 	/// `wrapPostMessage(object)`
-	WrapPostMessage {
-		inner: Span,
-	},
+	WrapPostMessage,
+
+	// `new Foo()` -> `new (Foo)()`
+	WrapNew,
 
 	/// `(cfg.importfn("cfg.base"))`
 	ImportFn,
@@ -232,13 +233,10 @@ impl<'alloc: 'data, 'data> RewriteType<'alloc, 'data> {
 					location_assigned
 				}
 			)],
-			Self::WrapPostMessage { inner } => smallvec![change!(span!(start), WrapPostMessage), change!(
-				inner,
-				ClosingParen {
-					semi: false,
-					replace: true
-				}
+			Self::WrapPostMessage => smallvec![change!(span!(start), WrapPostMessageLeft), change!(span!(end),
+				ClosingParen { semi: false, replace: false}
 			)],
+			Self::WrapNew => smallvec![change!(span!(start), OpeningParen), change!(span!(end), ClosingParen { semi: false, replace: false })],
 			Self::SetRealmFn => smallvec![change!(span, SetRealmFn)],
 			Self::ImportFn => smallvec![change!(span, ImportFn)],
 			Self::MetaFn => smallvec![change!(span, MetaFn)],

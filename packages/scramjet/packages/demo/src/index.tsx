@@ -1,46 +1,47 @@
-import { css } from "dreamland/core";
-import { App } from "./App";
+import LoadInterstitial from "./components/LoadInterstitial";
+import App from "./App";
 import LibcurlClient from "@mercuryworkshop/libcurl-transport";
-
-const transport = new LibcurlClient({
-	wisp: import.meta.env.VITE_WISP_URL,
-});
+import EpoxyClient from "@mercuryworkshop/epoxy-transport";
+import { defaultConfigDev } from "@mercuryworkshop/scramjet";
+const { Controller, HttpCachePlugin } = $scramjetController;
+import { demoSettingsStore } from "./store";
 
 let app = document.getElementById("app")!;
 
-export function LoadInterstitial() {
-	return (
-		<dialog class="signin">
-			<h1>Loading</h1>
-			<p>{use(this.status)}</p>
-		</dialog>
-	);
+let controller: InstanceType<typeof Controller>;
+const cachePlugin = new HttpCachePlugin();
+
+export function getTransport(): LibcurlClient | EpoxyClient {
+	const wispUrl = demoSettingsStore.wispUrl;
+	switch (demoSettingsStore.transport) {
+		case "epoxy":
+			return new EpoxyClient({ wisp: wispUrl });
+		case "libcurl":
+		default:
+			return new LibcurlClient({ wisp: wispUrl });
+	}
 }
-LoadInterstitial.style = css`
-	:scope {
-		transition: opacity 0.4s ease;
-		width: 50%;
-		height: 20%;
-		border: none;
-		border-radius: 1em;
-		text-align: center;
-	}
-	h1 {
-		text-align: center;
-		font-weight: bold;
-		font-size: 2em;
-	}
-	:modal[open] {
-		animation: fade 0.4s ease normal;
-	}
 
-	:modal::backdrop {
-		backdrop-filter: blur(3px);
-	}
-`;
+async function waitForControllerOrReady(timeoutMs = 10000): Promise<void> {
+	if (navigator.serviceWorker.controller) return;
 
-const { Controller } = $scramjetController;
-export let controller;
+	const ready = navigator.serviceWorker.ready.then(() => {});
+	const controllerChanged = new Promise<void>((resolve) => {
+		const onChange = () => {
+			navigator.serviceWorker.removeEventListener("controllerchange", onChange);
+			resolve();
+		};
+		navigator.serviceWorker.addEventListener("controllerchange", onChange, {
+			once: true,
+		} as any);
+	});
+	const timeout = new Promise<void>((resolve) =>
+		setTimeout(resolve, timeoutMs)
+	);
+
+	// Wait for whichever happens first; on timeout we continue to avoid blocking the UI.
+	await Promise.race([ready, controllerChanged, timeout]);
+}
 
 async function init() {
 	const interstitial: any = (
@@ -51,19 +52,6 @@ async function init() {
 
 	try {
 		const registration = await navigator.serviceWorker.register("./sw.js");
-
-		// If already controlled or active, don't block the UI.
-		if (navigator.serviceWorker.controller || registration.active) {
-			interstitial.$.state.status = "Service worker active";
-			controller = new Controller({
-				serviceworker: registration.active,
-				transport,
-			});
-			await controller.ready;
-			console.log(controller);
-			interstitial.close();
-			return;
-		}
 
 		// Non-blocking progress updates on state transitions.
 		const updateStatus = (sw: ServiceWorker | null) => {
@@ -100,11 +88,16 @@ async function init() {
 		await waitForControllerOrReady(10000);
 		interstitial.$.state.status =
 			"Service worker ready, waiting for controller init";
+		const readySw = navigator.serviceWorker.controller ?? registration.active;
+		if (!readySw) {
+			throw new Error("No service worker available for controller");
+		}
 		controller = new Controller({
-			serviceworker: registration.active,
-			transport,
+			serviceworker: readySw,
+			transport: getTransport(),
+			scramjetConfig: defaultConfigDev,
 		});
-		await controller.ready;
+		await controller.wait();
 		console.log(controller);
 		interstitial.$.state.status = "Controller initialized";
 		interstitial.close();
@@ -119,30 +112,9 @@ async function init() {
 	}
 }
 
-async function waitForControllerOrReady(timeoutMs = 10000): Promise<void> {
-	if (navigator.serviceWorker.controller) return;
-
-	const ready = navigator.serviceWorker.ready.then(() => {});
-	const controllerChanged = new Promise<void>((resolve) => {
-		const onChange = () => {
-			navigator.serviceWorker.removeEventListener("controllerchange", onChange);
-			resolve();
-		};
-		navigator.serviceWorker.addEventListener("controllerchange", onChange, {
-			once: true,
-		} as any);
-	});
-	const timeout = new Promise<void>((resolve) =>
-		setTimeout(resolve, timeoutMs)
-	);
-
-	// Wait for whichever happens first; on timeout we continue to avoid blocking the UI.
-	await Promise.race([ready, controllerChanged, timeout]);
-}
-
 async function mount() {
 	try {
-		const root = <App></App>;
+		const root = <App />;
 		app.replaceWith(root);
 	} catch (e) {
 		let err = e as any;
@@ -157,3 +129,4 @@ async function mount() {
 }
 
 init().then(() => mount());
+export { controller, cachePlugin };

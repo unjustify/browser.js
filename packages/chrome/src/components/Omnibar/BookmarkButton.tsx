@@ -1,27 +1,31 @@
-import { createState, css } from "dreamland/core";
-import { OmnibarButton } from "./OmnibarButton";
-import { browser } from "../../Browser";
-import { createMenuCustom } from "../Menu";
-import { BookmarkPopup } from "../BookmarkPopup";
-import { emToPx } from "../../utils";
+import { createState, css, type FC } from "dreamland/core";
+import { OmnibarButton } from "@components/Omnibar/OmnibarButton";
+import { createMenuCustom } from "@components/Menu";
+import { BookmarkPopup } from "@components/BookmarkPopup";
+import { emToPx } from "../../util";
 
 import { iconStar, iconStarFilled } from "../../icons";
-import { Icon } from "../Icon";
+import { Icon } from "@components/Icon";
+import { profileService, tabsService } from "../..";
+import { BookmarkEntry } from "../../services/ProfileService";
 
-export function BookmarkButton(s: { url: URL }) {
+export function BookmarkButton(this: FC<{ url: URL }>) {
 	return (
 		<button
 			on:click={(e) => {
 				e.stopPropagation();
 				e.preventDefault();
-				let bookmark = browser.bookmarks.find((b) => b.url == s.url.href);
+				let bookmark = profileService.bookmarks.find(
+					(b) => b.url.href == this.url.href
+				);
 
 				let isnew = false;
 				if (!bookmark) {
-					bookmark = createState({
-						url: browser.activetab.url.href,
-						favicon: browser.activetab.icon,
-						title: browser.activetab.title || browser.activetab.url.hostname,
+					bookmark = new BookmarkEntry({
+						url: tabsService.activetab.url,
+						favicon: tabsService.activetab.icon,
+						title:
+							tabsService.activetab.title || tabsService.activetab.url.hostname,
 					});
 					isnew = true;
 				}
@@ -36,8 +40,8 @@ export function BookmarkButton(s: { url: URL }) {
 			}}
 		>
 			<Icon
-				icon={use(browser.bookmarks, s.url).map(() =>
-					browser.bookmarks.some((b) => b.url == s.url.href)
+				icon={use(profileService.bookmarks, this.url).map(() =>
+					profileService.bookmarks.some((b) => b.url == this.url.href)
 						? iconStarFilled
 						: iconStar
 				)}

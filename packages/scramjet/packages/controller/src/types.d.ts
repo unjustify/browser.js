@@ -1,5 +1,6 @@
-import type { BareHeaders } from "../../bare-mux-custom";
-
+import type { RawHeaders } from "@mercuryworkshop/proxy-transports";
+import type { CONTROLLERFRAME } from "./symbols";
+import type { Frame } from ".";
 export type BodyType =
 	| string
 	| ArrayBuffer
@@ -8,6 +9,7 @@ export type BodyType =
 
 export type TransferRequest = {
 	rawUrl: string;
+	rawReferrer: string | null;
 	destination: RequestDestination;
 	mode: RequestMode;
 	referrer: string;
@@ -15,34 +17,34 @@ export type TransferRequest = {
 	body: BodyType | null;
 	cache: RequestCache;
 	forceCrossOriginIsolated: boolean;
-	initialHeaders: BareHeaders;
+	initialHeaders: RawHeaders;
 	rawClientUrl?: string;
+	clientId?: string;
 };
 
 export type TransferResponse = {
 	body: BodyType;
-	headers: BareHeaders;
+	headers: RawHeaders;
 	status: number;
 	statusText: string;
+};
+
+export type SerializedCookieSyncEntry = {
+	url: string;
+	cookie: string;
 };
 
 export type Controllerbound = {
 	ready: [];
 	request: [TransferRequest, TransferResponse];
-	sendSetCookie: [
-		{
-			url: string;
-			cookie: string;
-		},
-	];
 	initRemoteTransport: [MessagePort];
 };
 
 export type SWbound = {
 	sendSetCookie: [
 		{
-			url: string;
-			cookie: string;
+			cookies: SerializedCookieSyncEntry[];
+			options?: CookieSyncOptions;
 		},
 	];
 };
@@ -53,22 +55,29 @@ export type TransportToController = {
 			remote: string;
 			method: string;
 			body: BodyInit | null;
-			headers: BareHeaders;
+			headers: RawHeaders;
 			// signal: AbortSignal | undefined
 		},
 		TransferrableResponse,
+	];
+	sendSetCookie: [
+		{
+			cookies: SerializedCookieSyncEntry[];
+			options?: CookieSyncOptions;
+		},
 	];
 	connect: [
 		{
 			url: string;
 			protocols: string[];
-			requestHeaders: BareHeaders;
+			requestHeaders: RawHeaders;
 			port: MessagePort;
 		},
 		(
 			| {
 					result: "success";
 					protocol: string;
+					extensions: string;
 			  }
 			| {
 					result: "failure";
@@ -92,3 +101,26 @@ export type WebSocketMessage =
 			code: number;
 			reason: string;
 	  };
+export type FrameInitHooks = {
+	pre: {
+		context: {
+			window: Window;
+			client: ScramjetClient;
+			isTopLevel: boolean;
+		};
+		props: {};
+	};
+	post: {
+		context: {
+			window: Window;
+			client: ScramjetClient;
+			isTopLevel: boolean;
+		};
+		props: {};
+	};
+};
+declare global {
+	interface HTMLIFrameElement {
+		[CONTROLLERFRAME]: Frame;
+	}
+}

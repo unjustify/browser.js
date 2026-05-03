@@ -1,10 +1,10 @@
-import { css } from "dreamland/core";
-import { createMenuCustom } from "../Menu";
-import { SiteInformationPopup } from "../SiteInformationPopup";
-import { browser } from "../../Browser";
-import { Icon } from "../Icon";
-import { emToPx } from "../../utils";
+import { css, type FC } from "dreamland/core";
+import { createMenuCustom } from "@components/Menu";
+import { SiteInformationPopup } from "@components/SiteInformationPopup";
+import { Icon } from "@components/Icon";
+import { emToPx } from "../../util";
 import { iconOptions } from "../../icons";
+import { tabsService } from "../..";
 
 export function SiteOptionsButton() {
 	return (
@@ -15,7 +15,9 @@ export function SiteOptionsButton() {
 						left: (e.target as HTMLElement).getBoundingClientRect().left,
 						top: emToPx(2.5) + 40,
 					},
-					<SiteInformationPopup tab={browser.activetab}></SiteInformationPopup>
+					<SiteInformationPopup
+						tab={tabsService.activetab}
+					></SiteInformationPopup>
 				);
 				e.preventDefault();
 				e.stopPropagation();
@@ -35,7 +37,7 @@ SiteOptionsButton.style = css`
 		outline: none;
 		border: none;
 		color: var(--toolbar_text);
-		font-size: 1em;
+		font-size: calc(var(--omnibar-height) / 2.5);
 		padding: 0.1em;
 		border-radius: 0.2em;
 		display: flex;

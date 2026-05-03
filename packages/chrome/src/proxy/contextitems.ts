@@ -1,5 +1,5 @@
+import { tabsService } from "..";
 import type { Chromebound } from "../../../inject/src/types";
-import { browser } from "../Browser";
 import {
 	iconAdd,
 	iconBack,
@@ -12,7 +12,7 @@ import {
 	iconSave,
 	iconSearch,
 } from "../icons";
-import type { Tab } from "../Tab";
+import type { Tab } from "../Tab/Tab";
 
 export function pageContextItems(
 	tab: Tab,
@@ -51,7 +51,7 @@ export function pageContextItems(
 				action: () => {
 					// TODO: this is broken lol
 					if (image.src) {
-						let newTab = browser.newTab();
+						let newTab = tabsService.newTab();
 						newTab.pushNavigate(new URL(image.src));
 					}
 				},
@@ -81,7 +81,7 @@ export function pageContextItems(
 				label: "Open Link",
 				action: () => {
 					if (anchor.href) {
-						browser.activetab.pushNavigate(new URL(anchor.href));
+						tabsService.activetab.pushNavigate(new URL(anchor.href));
 					}
 				},
 				icon: iconLink,
@@ -90,7 +90,7 @@ export function pageContextItems(
 				label: "Open Link in New Tab",
 				action: () => {
 					if (anchor.href) {
-						browser.newTab(new URL(anchor.href));
+						tabsService.newTab(new URL(anchor.href));
 					}
 				},
 				icon: iconAdd,

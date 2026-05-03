@@ -1,17 +1,10 @@
-import {
-	createDelegate,
-	css,
-	Pointer,
-	type ComponentContext,
-	type DLElement,
-} from "dreamland/core";
-import { browser } from "../Browser";
-import { Checkbox } from "./Checkbox";
-import { Icon } from "./Icon";
+import { createDelegate, css, Pointer, type FC } from "dreamland/core";
+import { Checkbox } from "@components/Checkbox";
+import { Icon } from "@components/Icon";
 import type { IconifyIcon } from "@iconify/types";
-import { emToPx } from "../utils";
-import { isPuter } from "../main";
-import { requestUnfocusFrames } from "./Shell";
+import { emToPx } from "../util";
+import { isPuter } from "..";
+import { requestUnfocusFrames } from "@components/Shell";
 
 export const closeMenu = createDelegate<void>();
 
@@ -23,17 +16,20 @@ export type PositionConstraints = {
 };
 
 export function Menu(
-	this: {
-		closing: boolean;
-		x: number;
-		y: number;
-	},
-	s: {
-		position: PositionConstraints;
-		items?: MenuItem[];
-		custom?: HTMLElement;
-	},
-	cx: ComponentContext
+	this: FC<
+		{
+			position: PositionConstraints;
+			items?: MenuItem[];
+			custom?: HTMLElement;
+		},
+		{
+			closing: boolean;
+			x: number;
+			y: number;
+			transformOriginX: string;
+			transformOriginY: string;
+		}
+	>
 ) {
 	this.closing = true;
 	requestAnimationFrame(() => {
@@ -41,6 +37,8 @@ export function Menu(
 	});
 	this.x = 0;
 	this.y = 0;
+	this.transformOriginX = "left";
+	this.transformOriginY = "top";
 
 	const [lock, unlock] = requestUnfocusFrames();
 
@@ -51,15 +49,15 @@ export function Menu(
 		window.removeEventListener("contextmenu", ev, { capture: true });
 
 		this.closing = true;
-		cx.root.addEventListener("transitionend", () => {
-			cx.root.remove();
+		this.root.addEventListener("transitionend", () => {
+			this.root.remove();
 		});
 	};
 	closeMenu.listen(close);
 
 	const ev = (e: MouseEvent) => {
 		// Don't close if the click is over the menu
-		if (cx.root.contains(e.target as Node)) {
+		if (this.root.contains(e.target as Node)) {
 			return;
 		}
 
@@ -68,30 +66,36 @@ export function Menu(
 		e.preventDefault();
 	};
 
-	cx.mount = () => {
+	this.cx.mount = () => {
 		lock();
-		document.body.appendChild(cx.root);
-		const { width, height } = cx.root.getBoundingClientRect();
+		document.body.appendChild(this.root);
+		const { width, height } = this.root.getBoundingClientRect();
 		const docWidth = document.documentElement.clientWidth;
 		const docHeight = document.documentElement.clientHeight;
 		const padding = emToPx(1);
 
-		if (s.position.left !== undefined) {
-			this.x = s.position.left;
-		} else if (s.position.right !== undefined) {
-			this.x = s.position.right - width;
+		if (this.position.left !== undefined) {
+			this.x = this.position.left;
+		} else if (this.position.right !== undefined) {
+			this.x = this.position.right - width;
 		}
 
-		if (s.position.top !== undefined) {
-			this.y = s.position.top;
-		} else if (s.position.bottom !== undefined) {
-			this.y = s.position.bottom - height;
+		if (this.position.top !== undefined) {
+			this.y = this.position.top;
+		} else if (this.position.bottom !== undefined) {
+			this.y = this.position.bottom - height;
 		}
 
 		const maxX = docWidth - width - padding;
 		const maxY = docHeight - height - padding;
-		if (this.x > maxX) this.x = maxX;
-		if (this.y > maxY) this.y = maxY;
+		if (this.x > maxX) {
+			this.x = maxX;
+			this.transformOriginX = "right";
+		}
+		if (this.y > maxY) {
+			this.y = maxY;
+			this.transformOriginY = "bottom";
+		}
 		if (this.x < padding) this.x = padding;
 		if (this.y < padding) this.y = padding;
 
@@ -100,18 +104,20 @@ export function Menu(
 			capture: true,
 		});
 
-		cx.root.addEventListener("click", (e) => {
+		this.root.addEventListener("click", (e) => {
 			e.stopPropagation();
 		});
 	};
 	return (
 		<div
-			style={use`--x: ${this.x}px; --y: ${this.y}px;`}
+			style={use`--x: ${this.x}px; --y: ${this.y}px; --transform-origin-x: ${this.transformOriginX}; --transform-origin-y: ${this.transformOriginY};`}
 			class:closing={use(this.closing)}
 		>
-			{s.items
-				? use(s.items).mapEach((item) =>
-						item == "-" ? (
+			{this.items
+				? use(this.items).mapEach((item) =>
+						item == null ? (
+							""
+						) : item == "-" ? (
 							<div class="separator" />
 						) : item.checkbox ? (
 							<button
@@ -147,7 +153,7 @@ export function Menu(
 							</button>
 						)
 					)
-				: s.custom}
+				: this.custom}
 		</div>
 	);
 }
@@ -156,34 +162,35 @@ Menu.style = css`
 		position: absolute;
 		top: var(--y);
 		left: var(--x);
-		background-color: var(--frame);
+		background-color: var(--popup);
 		border: 1px solid var(--popup_border);
-		border-radius: 4px;
+		border-radius: var(--radius);
 		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 		z-index: 1000;
 		display: flex;
 		flex-direction: column;
-		min-width: 10em;
+		min-width: 15em;
 		overflow: hidden;
 
 		transition:
-			opacity 0.15s ease,
-			transform 0.15s ease;
+			opacity 0.1s ease,
+			transform 0.12s cubic-bezier(0.35, 0.15, 0, 1.8);
 		opacity: 1;
-		transform: scale(100%);
+		transform: scaleX(100%) scaleY(100%);
+		transform-origin: var(--transform-origin-x) var(--transform-origin-y);
 	}
 	.separator {
 		border-top: 1px solid var(--text-20);
 	}
 	:scope.closing {
-		transform: scale(95%);
+		transform: scaleX(95%) scaleY(87%);
 		opacity: 0;
 	}
 	.item {
 		background: none;
 		border: none;
 		font-size: 0.8em;
-		padding: 1em;
+		padding: 0.75em 1.25em;
 		text-align: left;
 		color: var(--toolbar_text);
 
@@ -215,7 +222,7 @@ Menu.style = css`
 	}
 `;
 
-let activeMenu: DLElement<typeof Menu> | null = null;
+let activeMenu: HTMLElement | null = null;
 
 type MenuItem =
 	| {
@@ -238,7 +245,7 @@ export function setContextMenu(elm: HTMLElement, items: MenuItem[]) {
 export function createMenu(
 	position: PositionConstraints,
 	items: MenuItem[]
-): DLElement<typeof Menu> {
+): HTMLElement {
 	if (isPuter) {
 		puter.ui.contextMenu({
 			items: items.map((i) =>
@@ -258,9 +265,7 @@ export function createMenu(
 		closeMenu();
 	}
 
-	let menu = (<Menu position={position} items={items} />) as DLElement<
-		typeof Menu
-	>;
+	let menu = (<Menu position={position} items={items} />) as HTMLElement;
 	activeMenu = menu;
 
 	return menu;
@@ -269,14 +274,12 @@ export function createMenu(
 export function createMenuCustom(
 	position: PositionConstraints,
 	custom: HTMLElement
-): DLElement<typeof Menu> {
+): HTMLElement {
 	if (activeMenu) {
 		closeMenu();
 	}
 
-	let menu = (<Menu position={position} custom={custom} />) as DLElement<
-		typeof Menu
-	>;
+	let menu = (<Menu position={position} custom={custom} />) as HTMLElement;
 	activeMenu = menu;
 
 	return menu;

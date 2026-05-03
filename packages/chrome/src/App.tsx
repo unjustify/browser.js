@@ -1,17 +1,26 @@
-import type { ComponentContext } from "dreamland/core";
+import type { FC } from "dreamland/core";
 import { css } from "dreamland/core";
-import { TabStrip } from "./components/TabStrip/TabStrip";
-import { browser } from "./Browser";
-import { Tab } from "./Tab";
-import { BookmarksStrip } from "./components/BookmarksStrip";
-import { Omnibar } from "./components/Omnibar/Omnibar";
+import { TabStrip } from "@components/TabStrip/TabStrip";
+import { Tab } from "./Tab/Tab";
+import { BookmarksStrip } from "@components/BookmarksStrip";
+import { Omnibar } from "@components/Omnibar/Omnibar";
 import { getTheme } from "./themes";
 import { contexts } from "./proxy/scramjet";
+import { INTERNAL_URL_PROTOCOL } from "./consts";
+import { Shell } from "@components/Shell";
+import { settingsService, tabsService } from ".";
 
-export function App(props: {}, cx: ComponentContext) {
+export function App(
+	this: FC<
+		{},
+		{
+			children: any;
+		}
+	>
+) {
 	const applyTheme = () => {
-		const appearance = browser.settings.appearance;
-		const themeId = browser.settings.themeId;
+		const appearance = settingsService.settings.appearance;
+		const themeId = settingsService.settings.themeId;
 		const theme = getTheme(themeId);
 
 		// Determine if we should use light mode
@@ -39,40 +48,54 @@ export function App(props: {}, cx: ComponentContext) {
 
 	applyTheme();
 
+	const applyProfile = () => {
+		const profile = settingsService.settings.uiProfile;
+		document.body.classList.toggle("ui-compact", profile === "compact");
+		document.body.classList.toggle("ui-touch", profile === "touch");
+		document.body.classList.toggle("ui-default", profile === "default");
+	};
+
+	applyProfile();
+
 	const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 	const handleThemeChange = () => {
-		if (browser.settings.appearance === "system") {
+		if (settingsService.settings.appearance === "system") {
 			applyTheme();
 		}
 	};
 
 	mediaQuery.addEventListener("change", handleThemeChange);
 
-	use(browser.settings.appearance).listen(applyTheme);
-	use(browser.settings.themeId).listen(applyTheme);
+	use(settingsService.settings.appearance).listen(applyTheme);
+	use(settingsService.settings.themeId).listen(applyTheme);
 
-	cx.mount = () => {
+	use(settingsService.settings.uiProfile).listen(applyProfile);
+
+	this.cx.mount = () => {
 		applyTheme();
 	};
 
 	return (
 		<div id="app">
 			<TabStrip
-				tabs={use(browser.tabs)}
-				activetab={use(browser.activetab)}
+				tabs={use(tabsService.tabs)}
+				activetab={use(tabsService.activetab)}
 				addTab={() => {
-					browser.newTab(new URL("puter://newtab"), true);
+					tabsService.newTab(new URL(`${INTERNAL_URL_PROTOCOL}//newtab`), true);
 				}}
 				destroyTab={(tab: Tab) => {
-					browser.destroyTab(tab);
+					tabsService.destroyTab(tab);
 				}}
 			/>
-			<Omnibar tab={use(browser.activetab)} />
-			{use(browser.activetab.url, browser.settings.showBookmarksBar)
-				.map(([u, pinned]) => pinned || u.href === "puter://newtab")
-				.andThen(<BookmarksStrip />)}
+			<Omnibar tab={use(tabsService.activetab)} />
+			{use(tabsService.activetab.url, settingsService.settings.showBookmarksBar)
+				.map(
+					([u, pinned]) =>
+						pinned || u.href === `${INTERNAL_URL_PROTOCOL}//newtab`
+				)
+				.and(<BookmarksStrip />)}
 			<div class="separator"></div>
-			{cx.children}
+			{this.children}
 		</div>
 	);
 }
@@ -90,3 +113,37 @@ App.style = css`
 		border-top: 1px solid var(--text-15);
 	}
 `;
+
+const app = document.getElementById("app")!;
+
+export let mountedResolve!: () => void;
+export const mountedPromise = new Promise<void>((resolve) => {
+	mountedResolve = resolve;
+}).then(() => {
+	mountedResolve = null!;
+});
+
+export async function mount(): Promise<HTMLElement> {
+	try {
+		let shell = <Shell />;
+		let built = <App>{shell}</App>;
+		app.replaceWith(built);
+
+		built.addEventListener("contextmenu", (e) => {
+			e.preventDefault();
+		});
+
+		mountedResolve();
+
+		return built;
+	} catch (e) {
+		let err = e as any;
+		app.replaceWith(
+			document.createTextNode(
+				`Error mounting: ${"message" in err ? err.message : err}`
+			)
+		);
+		console.error(err);
+		throw e;
+	}
+}

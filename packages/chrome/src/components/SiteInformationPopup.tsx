@@ -1,19 +1,19 @@
-import { css } from "dreamland/core";
-import type { Tab } from "../Tab";
-import { splitUrl } from "../utils";
+import { css, type FC } from "dreamland/core";
+import { type Tab } from "../Tab/Tab";
+import { splitUrl } from "../util";
 
 import { iconClose, iconTrash, iconSettings } from "../icons";
-import { Icon } from "./Icon";
-import { Button } from "./Button";
+import { Icon } from "@components/Icon";
+import { Button } from "@components/Button";
 
-import { closeMenu } from "./Menu";
+import { closeMenu } from "@components/Menu";
 
-export function SiteInformationPopup(s: { tab: Tab }) {
+export function SiteInformationPopup(this: FC<{ tab: Tab }>) {
 	return (
 		<div>
-			<div class="header">
+			<div class="header section">
 				<span>
-					{use(s.tab.url).map((u) => splitUrl(u)[0] + splitUrl(u)[1])}
+					{use(this.tab.url).map((u) => splitUrl(u)[0] + splitUrl(u)[1])}
 				</span>
 				<div class="buttoniconscontainer">
 					<Button
@@ -26,12 +26,12 @@ export function SiteInformationPopup(s: { tab: Tab }) {
 					</Button>
 				</div>
 			</div>
-			<div class="content">
+			<div class="content section">
 				<p>
 					Connection is protected by SSL for this site and forwarded over WISP
 				</p>
 			</div>
-			<div class="footer">
+			<div class="footer section">
 				<div class="entry">
 					<Icon icon={iconTrash}></Icon>
 					<span>Clear Site Data</span>
@@ -63,30 +63,34 @@ SiteInformationPopup.style = css`
 	}
 
 	.content {
-		padding-left: 1em;
+		padding-inline: 1em;
+		font-size: 0.85em;
+		line-height: 1.3;
 	}
 
 	.header {
 		padding: 1em;
 		display: flex;
-		border-bottom: 1px solid var(--toolbar_text);
+		border-bottom: 1px solid var(--popup_border);
 	}
 	.header span {
 		font-size: 1.15em;
+		font-weight: 500;
 	}
 
 	.footer {
-		border-top: 1px solid var(--toolbar_text);
+		border-top: 1px solid var(--popup_border);
 		display: flex;
 		flex-direction: column;
 	}
 
 	.entry {
 		padding: 1em;
+		padding-left: calc(1em - 4px);
 		cursor: pointer;
 		display: flex;
 		align-items: center;
-		gap: 1em;
+		gap: 0.5em;
 	}
 	.entry:hover {
 		background: var(--toolbarbutton-hover-background);

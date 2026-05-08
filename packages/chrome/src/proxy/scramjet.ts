@@ -131,7 +131,6 @@ class ProxyFrameContext {
 				},
 				contextmenu: async (msg) => {
 					if (!tab) return;
-
 					let offX = 0;
 					let offY = 0;
 					let { x, y } = tab!.frame.frame.getBoundingClientRect();

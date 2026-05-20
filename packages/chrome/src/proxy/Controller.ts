@@ -49,7 +49,7 @@ export class Controller {
 		},
 		request: async (data) => {
 			try {
-				let headers = ScramjetHeaders.fromRawHeaders(data.initialHeaders);
+				const headers = ScramjetHeaders.fromRawHeaders(data.initialHeaders);
 				const request: ScramjetFetchRequest = {
 					rawUrl: new URL(data.rawUrl),
 					rawClientUrl: data.rawClientUrl

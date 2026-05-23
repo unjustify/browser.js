@@ -28,7 +28,10 @@ jobs:
         with:
           node-version: "24"
           cache: "pnpm"
-
+        
+      - name: Build Dreamland
+        run: cd external/dreamlandjs && pnpm install && pnpm build
+        
       - name: Install pnpm dependencies
         run: pnpm install --no-frozen-lockfile
 

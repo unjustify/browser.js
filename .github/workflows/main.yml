@@ -90,7 +90,7 @@ jobs:
           cache: "pnpm"
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
       - name: Get artifacts
         uses: actions/download-artifact@v4
@@ -128,7 +128,7 @@ jobs:
           cache: "pnpm"
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
       - name: Get artifacts (scramjet/core)
         uses: actions/download-artifact@v4
@@ -204,7 +204,7 @@ jobs:
           cache: "pnpm"
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
       - name: Get artifacts
         uses: actions/download-artifact@v4

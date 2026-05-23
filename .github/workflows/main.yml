@@ -30,7 +30,7 @@ jobs:
           cache: "pnpm"
         
       - name: Build Dreamland
-        run: cd external/dreamlandjs && pnpm install && pnpm build
+        run: cd external/dreamlandjs && pnpm install --no-frozen-lockfile && pnpm build
         
       - name: Install pnpm dependencies
         run: pnpm install --no-frozen-lockfile

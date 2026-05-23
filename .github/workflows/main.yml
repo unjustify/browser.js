@@ -252,7 +252,7 @@ jobs:
       - name: Build Frontend
         run: |
           SKIP_CORE=1 pnpm build
-          pnpm build:chrome
+          VITE_ISOLATION_ORIGIN="https://stem-81d.pages.dev" pnpm build:chrome
 
       - name: Upload Artifact (frontend)
         uses: actions/upload-artifact@v4

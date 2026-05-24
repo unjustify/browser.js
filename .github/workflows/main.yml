@@ -252,7 +252,7 @@ jobs:
       - name: Build Frontend
         run: |
            SKIP_CORE=1 pnpm build
-           VITE_PUTER_BRANDING="" VITE_ISOLATION_ORIGIN="https://crunch.fly.dev" VITE_WISP_URL="wss://crunch.fly.dev/wisp/" pnpm build:chrome
+           VITE_PUTER_BRANDING="" VITE_ISOLATION_ORIGIN="https://crunch.ink" VITE_WISP_URL="wss://crunch.fly.dev/wisp/" pnpm build:chrome
 
       - name: Upload Artifact (frontend)
         uses: actions/upload-artifact@v4
